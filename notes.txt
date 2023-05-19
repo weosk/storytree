@@ -1,0 +1,2 @@
+crtl + shift + p = Command palette in visual studio 
+Rust Analyser: Debug
