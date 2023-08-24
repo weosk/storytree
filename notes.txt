@@ -1,2 +1,245 @@
 crtl + shift + p = Command palette in visual studio 
 Rust Analyser: Debug
+
+Type in: 
+settings.json
+-> Adjsut shit
+
+https://blog.logrocket.com/json-and-rust-why-serde_json-is-the-top-choice/
+
+Object {"contents": 
+Array [Object {"contents": 
+    Array [Object {"contents": 
+        Array [Object {"error": String("error opening dir")}], "name": String("efi"), "type": String("directory")}, 
+        Object {"contents": Array 
+        [Object {"contents": Array [], "name": String("fonts"), "type": String("directory")}, Object {"contents": Array [], "name": String("locale"), "type": String("directory")}, Object {"contents": Array [], "name": String("themes"), "type": String("directory")}, Object {"contents": Array [], "name": String("x86_64-efi"), "type": String("directory")}], "name": String("grub"), "type": String("directory")}, Object {"contents": Array [], "name": String("memtest86+"), "type": String("directory")}], "name": String("boot"), "type": String("directory")}], "name": String("/"), "type": String("directory")}
+
+
+
+
+
+
+
+              {"type":"directory","name":"efi","contents":[{"error": "error opening dir"}
+  ]},
+
+Converter:
+  https://transform.tools/json-to-rust-serde
+
+SerdeDoku:
+https://serde.rs/data-model.html
+
+
+
+1000 depth: 
+
+pub type Root = Vec<Root2>;
+
+#[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct Root2 {
+    #[serde(rename = "type")]
+    pub type_field: String,
+    pub name: String,
+    pub contents: Vec<Content>,
+}
+
+#[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct Content {
+    #[serde(rename = "type")]
+    pub type_field: String,
+    pub name: String,
+    #[serde(default)]
+    pub contents: Vec<Content2>,
+}
+
+#[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct Content2 {
+    #[serde(rename = "type")]
+    pub type_field: String,
+    pub name: String,
+    #[serde(default)]
+    pub contents: Vec<Content3>,
+}
+
+#[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct Content3 {
+    #[serde(rename = "type")]
+    pub type_field: String,
+    pub name: String,
+    #[serde(default)]
+    pub contents: Vec<Content4>,
+}
+
+#[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct Content4 {
+    #[serde(rename = "type")]
+    pub type_field: String,
+    pub name: String,
+    #[serde(default)]
+    pub contents: Vec<Content5>,
+}
+
+#[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct Content5 {
+    #[serde(rename = "type")]
+    pub type_field: String,
+    pub name: String,
+    #[serde(default)]
+    pub contents: Vec<Content6>,
+}
+
+#[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct Content6 {
+    #[serde(rename = "type")]
+    pub type_field: String,
+    pub name: String,
+    #[serde(default)]
+    pub contents: Vec<Content7>,
+}
+
+#[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct Content7 {
+    #[serde(rename = "type")]
+    pub type_field: String,
+    pub name: String,
+    #[serde(default)]
+    pub contents: Vec<Content8>,
+}
+
+#[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct Content8 {
+    #[serde(rename = "type")]
+    pub type_field: String,
+    pub name: String,
+    #[serde(default)]
+    pub contents: Vec<Content9>,
+}
+
+#[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct Content9 {
+    #[serde(rename = "type")]
+    pub type_field: String,
+    pub name: String,
+    #[serde(default)]
+    pub contents: Vec<Content10>,
+}
+
+#[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct Content10 {
+    #[serde(rename = "type")]
+    pub type_field: String,
+    pub name: String,
+    #[serde(default)]
+    pub contents: Vec<Content11>,
+}
+
+#[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct Content11 {
+    #[serde(rename = "type")]
+    pub type_field: String,
+    pub name: String,
+    #[serde(default)]
+    pub contents: Vec<Content12>,
+}
+
+#[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct Content12 {
+    #[serde(rename = "type")]
+    pub type_field: String,
+    pub name: String,
+    #[serde(default)]
+    pub contents: Vec<Content13>,
+}
+
+#[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct Content13 {
+    #[serde(rename = "type")]
+    pub type_field: String,
+    pub name: String,
+    #[serde(default)]
+    pub contents: Vec<Content14>,
+}
+
+#[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct Content14 {
+    #[serde(rename = "type")]
+    pub type_field: String,
+    pub name: String,
+    #[serde(default)]
+    pub contents: Vec<Content15>,
+}
+
+#[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct Content15 {
+    #[serde(rename = "type")]
+    pub type_field: String,
+    pub name: String,
+    #[serde(default)]
+    pub contents: Vec<Content16>,
+}
+
+#[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct Content16 {
+    #[serde(rename = "type")]
+    pub type_field: String,
+    pub name: String,
+}
+
+aabb instancing with cubes: 
+https://github.com/ForesightMiningSoftwareCorporation/bevy_aabb_instancings
+
+
+
+Update to Bevy 0.11 / 
+
+Give Every Inode / Filenamelocation their own Transformation matrix? 
+Liesse sich daraus nicht mittels maus raycast durch die inverse der transformation die momentan gepickte position bestimmen? 
+
+Eine Transformationsmatrix vom ursprung aus? 
+
+Gebildet aus Zusammenhaengen der Dateistruktur
+
+
+#[derive(Debug)]
+The compiler is capable of providing basic implementations for some traits via the #[derive] attribute. These traits can still be manually implemented if a more complex behavior is required.
+
+The following is a list of derivable traits:
+
+    Comparison traits: Eq, PartialEq, Ord, PartialOrd.
+    Clone, to create T from &T via a copy.
+    Copy, to give a type 'copy semantics' instead of 'move semantics'.
+    Hash, to compute a hash from &T.
+    Default, to create an empty instance of a data type.
+    Debug, to format a value using the {:?} formatter.
+
+
+If it takes more than a frame to generate a mesh, you can use an asynchronous task or a separate thread and an Arc<Mutex<T>> resource.
+
+
+Next ToDos: 
+
+    1.
+    Let it groow! 
+        Kombination aus Lindenmayer, Metadata und Relativerdateilocation(Tiefe im System, Dir or File etc.)
+    
+    2.
+    Find a way to put text on a texture and map the uv data or use one of the text3dlibrarys and check performance.
+
+

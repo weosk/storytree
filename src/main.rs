@@ -7,17 +7,14 @@ use bevy::{
     input::mouse::{MouseButtonInput, MouseMotion, MouseWheel},
     prelude::*, render::primitives::HalfSpace,
 };
+use treebuilder::Treedata;
 use std::{fs, iter::Map};
 use std::env;
 use walkdir::WalkDir;
 
 use bevy::render::mesh::{self, PrimitiveTopology, Indices};
 
-use bevy::render::camera::CameraProjection;
-//use window::Windows;
-
 mod treebuilder;
-
 
 #[derive(Component, Debug)]
 struct Cam
@@ -44,7 +41,8 @@ fn main() {
                 blue: 0.0,
                 alpha:1.0,
             },
-            brightness: 0.5,})
+            brightness: 0.5,},
+        )
         .run();
 }
 
@@ -122,7 +120,7 @@ fn process_inputs_system(
             if keys.pressed(KeyCode::ControlLeft) {
                 cam.speed -= 0.01;
 
-                treebuilder::print_hello();
+                // treebuilder::print_hello();
             }
             delta
         };
@@ -158,7 +156,6 @@ fn process_inputs_system(
     // }
     //println!("cnt: {}",cnt);
 }
-
 
 fn print_typename<T>(_: &T) {
     println!("{}", std::any::type_name::<T>())
@@ -197,30 +194,24 @@ fn setup(
     let mut cntVert = 0.0;
     let mut rot = 0.0;
 
+    let mut countVertices = 0;
+
     let mut add_indi: u32 = 0;
-    // for entry in WalkDir::new("/home/ben/projects/rust/storytree/").into_iter().filter_map(|e| e.ok()) {
-        //println!("{}", entry.path().display());
-    for entry in WalkDir::new("/home/ben/projects").into_iter().filter_map(|e| e.ok()) {
+
+    for entry in WalkDir::new("/").into_iter().filter_map(|e| e.ok()) {
+        countVertices += 12;
         if entry.file_type().is_dir() 
         {
             // Dive Up and to the side, depending on Directory
             for each in ground_vertices {
                 
-
-                vertexvec.push(   ( // Translation * Rotation -> Transform TriangleVertex -> into Vec<[f32; 3]>
+                vertexvec.push(   ( // Rotation * Translation -> Transform TriangleVertex -> into Vec<[f32; 3]>
                                     Affine3A::from_quat(Quat::from_rotation_y(rot)) *
                                     Affine3A::from_translation(Vec3{x:cntVert*0.02,y:cnt*0.02,z:0.0})
                                   )
                                   .transform_point3( Vec3::from_array(each) ) 
                                   .into()
             );
-
-                // vertexvec.push( Affine3A::from_translation(Vec3{x:cntVert*0.02,y:cnt*0.02,z:0.0}.into()).transform_point3( Vec3::from_array(each)
-                // ).into() 
-                // );
-
-
-                // println!("Type: {} Each: {:?} From_Array: {:?}",each.type_name(), each, Vec3::from_array(each).clone());
             }
 
             // dublicate indizes
@@ -247,7 +238,7 @@ fn setup(
         }
         else if entry.file_type().is_symlink()
         {
-            //println!("Symlink: {:?}", entry.file_name());
+            // println!("Symlink: {:?}", entry.file_name());
         }
         else 
         {
@@ -255,7 +246,7 @@ fn setup(
         }
     }
 
-    //println!("cnt: {}", cnt);
+    println!("Verti: {}", countVertices);
 
     // let mut mesh_vec = vec![];
     // mesh_vec.extend(vec![[-1., 0., 0.], [0., 1., 0.], [1., 0., 0.] ]);
@@ -267,6 +258,7 @@ fn setup(
     mesh.insert_attribute(Mesh::ATTRIBUTE_UV_0, vec![[0., 0.]; vertexvec.len()]);
     
     println!("vertexvecLen: {}", vertexvec.len());
+    println!("indexvecLen: {}", indexvec.len());
 
     mesh.insert_attribute(
         Mesh::ATTRIBUTE_POSITION,
@@ -285,9 +277,45 @@ fn setup(
                                                 //24, 26, 25, 27, 28, 29, 30, 32, 32, 33, 35, 34
 
     mesh.set_indices(Some(mesh::Indices::U32(indexvec)));
-    
+
+    // let mut mesh = Mesh::new(PrimitiveTopology::TriangleList);
+    // treebuilder::print_hello(commands, meshes, materials);
+
+    println!("Meshes: {:?}", meshes);
+
+    // for me in meshes:
+    // {
+    //     let mut scalef = 1.0; 
+    //     // MyMesh
+    //     commands.spawn(PbrBundle {
+    //         mesh: *me,
+    //         material: materials.add(Color::rgb(0.6, 0.3, 0.1).into()),
+    //         transform: Transform::from_scale(Vec3{x:scalef,y:scalef,z:scalef}),
+    //         ..default()
+    //     });
+    // }
+
+
+//new variant
+    // let mut meho = Treedata::new();
+    // // meho.mesh_handle();
+    // //meho.generate_mesh();
+
+    // let meshhandle = meho.mesh_handle(&mut meshes);
+
+    // let mut scalef = 1.0; 
+    // // MyMesh
+    // commands.spawn(PbrBundle {
+    //     mesh: meho.get_mesh_handle(),
+    //     material: materials.add(Color::rgb(0.6, 0.3, 0.1).into()),
+    //     transform: Transform::from_scale(Vec3{x:scalef,y:scalef,z:scalef}),
+    //     ..default()
+    // });
+
+    //oldvariant, nicht auslgelagert
+
     let mut scalef = 1.0; 
-    // MyMesh
+
     commands.spawn(PbrBundle {
         mesh: meshes.add(mesh),
         material: materials.add(Color::rgb(0.6, 0.3, 0.1).into()),
@@ -315,15 +343,15 @@ fn setup(
     // // // Point light, torchlike
     // commands.spawn(PointLightBundle {
     //     point_light: PointLight {
-    //         intensity: 0.1,
+    //         intensity: 10000.0,
     //         shadows_enabled: true,
     //         range: 10000.0,
-            // color: Color::Rgba {
-            //         red: 120.0,
-            //         green: 100.0,
-            //         blue: 0.0,
-            //         alpha: 255.0,
-            //     },
+    //         color: Color::Rgba {
+    //                 red: 120.0,
+    //                 green: 100.0,
+    //                 blue: 0.0,
+    //                 alpha: 255.0,
+    //             },
     //         ..default()
     //     },
     //     transform: Transform::from_xyz(0.0, 8.0, 0.0),
