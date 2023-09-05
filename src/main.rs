@@ -7,7 +7,7 @@ use bevy::{
     input::mouse::{MouseButtonInput, MouseMotion, MouseWheel},
     prelude::*, render::primitives::HalfSpace,
 };
-use treebuilder::Treedata;
+// use treebuilder::Treedata;
 use std::{fs, iter::Map};
 use std::env;
 use walkdir::WalkDir;
@@ -198,7 +198,7 @@ fn setup(
 
     let mut add_indi: u32 = 0;
 
-    for entry in WalkDir::new("/").into_iter().filter_map(|e| e.ok()) {
+    for entry in WalkDir::new("/home/ben/projects/").into_iter().filter_map(|e| e.ok()) {
         countVertices += 12;
         if entry.file_type().is_dir() 
         {
