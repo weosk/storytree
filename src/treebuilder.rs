@@ -1,14 +1,14 @@
-use bevy::render::mesh::{self, PrimitiveTopology, Indices};
+use bevy::render::mesh::{self, PrimitiveTopology};
 use bevy::math::*;      // Affine3A
-use bevy::prelude::*;   // Commands, meshes
+use bevy::prelude::*;   
 use walkdir::WalkDir;
 
-
+use crate::treedata::Treedata;
 
 #[derive(Component, Debug)]
-pub struct  Treedata{
+pub struct  Treebuilder{
     mesh:  bevy::prelude::Mesh,
-    mesh_handle: Handle<Mesh>,
+    // mesh_handle: Handle<Mesh>,
     // material: bevy_pbr::StandardMaterial>,
 }
 
@@ -16,12 +16,17 @@ impl Treebuilder{
 
     pub fn new() -> Self
     {
-            Self { mesh: bevy::prelude::Mesh::new(PrimitiveTopology::TriangleList), mesh_handle: Default::default() }
+            Self { mesh: bevy::prelude::Mesh::new(PrimitiveTopology::TriangleList) }
     }
 
-    pub fn mesh(
+    pub fn generate_mesh(
         &mut self,
-    ) {
+        mut meshTreedata: &mut ResMut<Treedata>,
+        // commands: &mut Commands,
+        // mut meshes: ResMut<Assets<Mesh>>,
+        // mesh:  bevy::prelude::Mesh,
+    ) -> Mesh {
+        
     // Mesh Transmutation Experiment Spawning ///////////////////////////////////////////////////////
     
         // Vertices
@@ -38,8 +43,6 @@ impl Treebuilder{
         // Transformations Matrix
         let tmat:Affine3A = Affine3A::from_translation(Vec3{x:0.0,y:1.0,z:0.0}.into());
         println!("T_Mat: {}, {}", tmat, tmat.translation);
-    
-        //self.mesh = Mesh::new(PrimitiveTopology::TriangleList);
         
         let mut vertexvec: Vec<[f32; 3]> = vec![];
         let mut indexvec: Vec<u32> = vec![];
@@ -109,13 +112,13 @@ impl Treebuilder{
         // mesh_vec.extend(vec![[-1., 0., 0.], [0., 1., 0.], [1., 0., 0.] ]);
         // mesh_vec.extend(vec![[-1., 0., 0.], [0., -1., 0.], [1., 0., 0.]]);
     
-        self.mesh.insert_attribute(Mesh::ATTRIBUTE_NORMAL, vec![[0., 1., 0.]; vertexvec.len()]);
-        self.mesh.insert_attribute(Mesh::ATTRIBUTE_UV_0, vec![[0., 0.]; vertexvec.len()]);
+        meshTreedata.mesh.insert_attribute(Mesh::ATTRIBUTE_NORMAL, vec![[0., 1., 0.]; vertexvec.len()]);
+        meshTreedata.mesh.insert_attribute(Mesh::ATTRIBUTE_UV_0, vec![[0., 0.]; vertexvec.len()]);
         
         println!("vertexvecLen: {}", vertexvec.len());
         println!("indexvecLen: {}", indexvec.len());
     
-        &self.mesh.insert_attribute(
+        meshTreedata.mesh.insert_attribute(
             Mesh::ATTRIBUTE_POSITION,
             vertexvec,
         );
@@ -131,18 +134,11 @@ impl Treebuilder{
                                                     //12, 14, 13, 15, 16, 17, 18, 19, 20, 21, 23, 22
                                                     //24, 26, 25, 27, 28, 29, 30, 32, 32, 33, 35, 34
     
-        &self.mesh.set_indices(Some(mesh::Indices::U32(indexvec)));
-//        let cube_mesh_handle: Handle<Mesh> = Mesh2dHandle.add(mesh);
-    }
+        meshTreedata.mesh.set_indices(Some(mesh::Indices::U32(indexvec)));
 
-    pub fn mesh_handle (&mut self, mes_que: &mut ResMut<Assets<Mesh>>)
-    {
-        self.mesh_handle = mes_que.add(self.mesh);
-    }
+        meshTreedata.mesh.clone()
 
-    pub fn get_mesh_handle (&self) -> Handle<Mesh>
-    {
-        return self.mesh_handle;
     }
 
 }
+
