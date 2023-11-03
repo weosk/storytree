@@ -1,0 +1,64 @@
+Przemyslaw Prusinkiewicz
+Aristid Lindenmayer
+The Algorithmic Beauty
+of Plants
+
+When each piece of a shape is geometrically similar to the
+whole, both the shape and the cascade that generate it are
+called self-similar
+
+D’Arcy Thompson [143] traces its
+origins to the late seventeenth century, and comments:
+Organic form itself is found, mathematically speaking, to be
+a function of time.... We might call the form of an organism
+an event in space-time, and not merely a configuration in
+space.
+This concept is echoed by Hall ́e, Oldeman and Tomlinson [58]:
+The idea of the form implicitly contains also the history of
+such a form.
+
+///////////////////////////////////////////////////////
+
+Can the human familarity with the concept of growing plants be used to convey otherwise abstract informationen of unknown terrain? 
+To illuminate this subject, this paper aims to visualise the linux filesystem as a root-to-leafs plant and gives the user the means to explore 
+and manipulate this simulation freely. The evaluation is conducted by exposing unfamiliar users with the traditional window/terminal based system and 
+the 3d visualisation and given simple tasks to measure the ease of usability.  
+
+/ Inforomatic-Bionic /
+
+///////////////////////////////////////////////////////
+
+No 3D Mesh for Text, but instead we are building a texture atlas that holds all the strings to directories and files 
+one over the other, then mapping there UV coordinates to the appropriate leaf vertices.
+
+3D Visualisation
+The process of visualisation consists of two main pillars, one is its geometry, represented by the generated mesh, the other 
+is information, coded in color and symbols, which is encapsulated through a generated texture atlas that maps all these 
+informations via UV - Coordinates onto the meshes vertices. 
+
+////////////////
+
+Fixing the camera-roll manover with the ground surface helps to orient the displayed text in an allways readable format.
+-> Fixed horizontal for master thesis, global orientet for storytrees/todoworldtrees
+
+Should deeper nested folders allways strive towards the "sky" / upwards? That way, the files could be hanging from respective
+folders.
+
+Form/visual structure of the folder-"leaf" could represent information about how many files / how big they are. 
+The leafs colour could represent how recent it had seen interaction? 
+    Clicking the folder leaf should render the file-fruits
+
+        But folder are more like the branches, files the leafs, but if we only render the leafs by clicking, we get dead trees.
+
+Interaction should be afterrendered for anymation and things like these? 
+
+What about our nice, rotating trees we got with lindenmayer?
+
+//
+A comparison of variable approaches to data visualisation using procedual mesh and texture generation. As research question?
+
+
+Depending on the amount of subfoldersx, spreading angle and branch length are adjusted, whereby branchlength is inverse propotional
+tho the spreading angle -> Less folders, bigger spread, less branch length needed to keep it "overviewable".
+
+The more files, the smaller the leafs? 

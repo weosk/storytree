@@ -9,6 +9,8 @@ edition = "2021"
 bevy = { version = "0.11", features = ["dynamic_linking"] }
 walkdir = "2.3.3"
 bytemuck = "1.13.1"
+# 3D text mesh generation
+meshtext = "0.3.0"
 
 # Enable a small amount of optimization in debug mode
 [profile.dev]

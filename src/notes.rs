@@ -15,3 +15,16 @@
     
     // 2.
     // Find a way to put text on a texture and map the uv data or use one of the text3dlibrarys and check performance.
+
+
+//==============================================================================================================\\
+
+    // Words:
+
+    // As filesystems grew over the years, people tended to loose their understanding of what was going on on their computers. An inquiriy
+    // shall now shine light on what emerged.
+
+    // Files hidden, only revealed by clicking on a folder? Amount or Size of files somehow visualized by file icon? 
+
+//==============================================================================================================\\
+

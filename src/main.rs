@@ -32,6 +32,9 @@ struct Cam
     rot: Quat,
 }
 
+#[derive(Component)]
+struct treemeshmarker;
+
 fn main() {
     //env::set_var("RUST_BACKTRACE", "1");
 
@@ -40,7 +43,7 @@ fn main() {
         .insert_resource(Treedata{ mesh: Mesh::new(PrimitiveTopology::TriangleList), mesh_handle: Default::default() } )
         .init_resource::<Treedata>()
         .add_systems(Startup, setup)
-        .add_systems(Update, (process_inputs_system, bevy::window::close_on_esc, animate_light_direction))
+        .add_systems(Update, (bevy::window::close_on_esc, process_inputs_system, animate_light_direction, update_scale))
         .insert_resource(AmbientLight {
             color: Color::Rgba {
                 red: 0.95,
@@ -51,6 +54,26 @@ fn main() {
             brightness: 0.5,},
         )
         .run();
+}
+
+
+fn update_scale(
+    keys: Res<Input<KeyCode>>,
+    mut tree: Query<(&mut Transform, &treemeshmarker)>,
+)
+{
+    if keys.pressed(KeyCode::Key1) {
+        for (mut transform, cube) in &mut tree {
+            transform.scale *= Vec3{x: 0.9,y:0.9,z: 0.9};
+        }
+        // println!("Works1");
+    }
+    if keys.pressed(KeyCode::Key2) {
+        for (mut transform, cube) in &mut tree {
+            transform.scale *= Vec3{x: 1.1,y:1.1,z: 1.1};
+        }
+    }
+
 }
 
 /// This system prints out all mouse events as they come in
@@ -77,7 +100,7 @@ fn process_inputs_system(
 
     // Update transform from keyboardinput and Yaw&Pitch
     for mut transform in q_transform.iter_mut() {
-        
+
         let mut temp_transform: Transform = Transform{ translation: transform.translation, rotation: transform.rotation, scale: transform.scale,};
 
         // Calculate rotation
@@ -107,6 +130,8 @@ fn process_inputs_system(
 
             // Manual Zoom
             if keys.pressed(KeyCode::Space) {
+
+                // temp_transform.scale += Vec3{ x: 10., y: 10., z: 10.}; -> This let's the mesh disapear 
                 if cam.fov <= 0.005
                 {
                     cam.fov -= 0.0005;
@@ -180,21 +205,31 @@ fn setup(
     // Initiate Treebuilder
     let mut treebuilder = Treebuilder::new();
 
+    // Dirwalk test
+    // treebuilder.dirwalk();
+
     // TODO? -> Handle<Mesh> entry to save in treedata? How to init to default?
     // let cube_mesh_handle: Handle<Mesh> = meshes.add(create_cube_mesh());
 
     // Generate Mesh, add it to meshes, save mesh handle in Treedata
     meshTreedata.mesh_handle = meshes.add( treebuilder.generate_mesh( &mut meshTreedata));
+    // meshTreedata.mesh_handle = meshes.add( Treebuilder::generate_mesh( &mut meshTreedata));
+
+
+
+    // meshTreedata.mesh_handle = meshes.add( treebuilder.generate_text_mesh( &mut meshTreedata));
 
     let scalef = 1.0; 
-    commands.spawn(PbrBundle {
+    commands.spawn((PbrBundle {
         mesh: meshTreedata.mesh_handle.clone(), // Clone Meshhandle to meshspawn
         material: materials.add(Color::rgb(0.6, 0.3, 0.1).into()),
         transform: Transform::from_scale(Vec3{x:scalef,y:scalef,z:scalef}),
         ..default()
-    });
+        },
+        treemeshmarker,)
+        );
 
-// Default Spawn of Scene Spawning ///////////////////////////////////////////////////////
+    // Default Spawn of Scene Spawning ///////////////////////////////////////////////////////
 
     // plane
     commands.spawn(PbrBundle {
@@ -204,12 +239,15 @@ fn setup(
     });
     
     // cube
-    commands.spawn(PbrBundle {
-        mesh: meshes.add(Mesh::from(shape::Cube { size: 1.0 })),
-        material: materials.add(Color::rgb(0.8, 0.7, 0.6).into()),
-        transform: Transform::from_xyz(0.0, 20., 0.0),
-        ..default()
-    });
+    // for i in 1..1000
+    // {
+    // commands.spawn(PbrBundle {
+    //     mesh: meshes.add(Mesh::from(shape::Cube { size: 1.0 })),
+    //     material: materials.add(Color::rgb(0.8, 0.7, 0.6).into()),
+    //     transform: Transform::from_xyz(0.0, (5*i) as f32, 0.0),
+    //     ..default()
+    // });
+    // }   
 
     // // // Point light, torchlike
     // commands.spawn(PointLightBundle {
@@ -249,7 +287,7 @@ fn setup(
     let y = 1.0;
     let z = 2.0;
     let w = 1.0;
-    
+
     // camera
     commands.spawn((Camera3dBundle {
         transform: Transform::from_xyz(0., 10., 40.0).looking_at(Vec3::ZERO, Vec3::Y),
@@ -272,7 +310,7 @@ fn setup(
     //     }.into(),
     //     ..default()
     // })
-
+    
 }
 
 fn animate_light_direction(

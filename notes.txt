@@ -68,3 +68,7 @@ Next ToDos:
     
     2.
     Find a way to put text on a texture and map the uv data or use one of the text3dlibrarys and check performance.
+
+//////////////////////////////////////////
+18.09.2023
+Every "main"- subfolder as their own mesh to manipulate and iterate with less delay?
