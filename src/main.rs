@@ -194,6 +194,232 @@ fn print_typename<T>(_: &T) {
     println!("{}", std::any::type_name::<T>())
 }
 
+fn generate_tree_mesh(
+    mut meshTreedata: &mut ResMut<Treedata>,
+) -> Mesh {
+        let PHI: f32 = 1.618033989; 
+
+        // Vertices
+        // Plain Data dodecaeder
+        let mut ground_vertices: [[f32; 3]; 20] =   
+            [   [  0.,      -1./PHI,  -PHI ], // 0
+                [  1.,      -1.,      -1.  ], // 1
+                [  1./PHI,  -PHI,     0.   ], // 2
+                [  -1./PHI, -PHI,     0.   ], // 3
+                [  -1.,     -1.,      -1.  ], // 4
+
+                [  -1.,      -1.,      1.  ], // 5
+                [  0.,      -1./PHI,  PHI  ], // 6
+                [  1.,      -1.,      1.   ], // 7
+
+                [  PHI,      0.,    1./PHI ], // 8
+                [  PHI,      0.,   -1./PHI ], // 9
+                [  -PHI,     0.,   -1./PHI ], // 10
+                [  -PHI,     0.,    1./PHI ], // 11
+
+                // Gespiegelt an der XZ Ebene, -> Werte von 0 - 7 mit positiver y achse
+
+                [  -1.,      1.,      1.  ], // 12
+                [  0.,       1./PHI,  PHI  ], // 13
+                [  1.,       1.,      1.   ], // 14
+                [  1.,       1.,      -1.  ], // 15
+                [  0.,       1./PHI,  -PHI ], // 16
+                [  -1.,      1.,      -1.  ], // 17
+                [  -1./PHI,  PHI,     0.   ], // 18
+                [  1./PHI,   PHI,     0.   ]  // 19 
+                ];
+
+        let ground_indices = [         
+                0, 1, 2,
+                0, 2, 3,
+                0, 3, 4,
+
+                6, 5, 3,
+                6, 3, 2, 
+                6, 2, 7,
+
+                2, 1, 9,
+                2, 9, 8, 
+                2, 8, 7,
+
+                3, 5, 11, 
+                3, 11, 10,
+                3, 10, 4,
+
+                5, 6, 13, 
+                5, 13, 12, 
+                5, 12, 11, 
+
+                1, 0, 16, 
+                1, 16, 15, 
+                1, 15, 9, 
+
+                // Halber Dodecaeder Formuliert in symmetrie, für möglichkeit zur animierten öffnung
+
+                7, 8, 14, 
+                7, 14, 13, 
+                7, 13, 6, 
+
+                4, 10, 17, 
+                4, 17, 16, 
+                4, 16, 0, 
+
+                13, 14, 19, 
+                13, 19, 18, 
+                13, 18, 12, 
+
+                16, 17, 18, 
+                16, 18, 19, 
+                16, 19, 15, 
+
+                18, 17, 10, 
+                18, 10, 11, 
+                18, 11, 12, 
+
+                19, 14, 8, 
+                19, 8, 9, 
+                19, 9, 15, 
+            ];
+
+            // Transformations Matrix
+            let tmat:Affine3A = Affine3A::from_translation(Vec3{x:0.0,y:1.0,z:0.0}.into());
+
+            let mut vertexvec: Vec<[f32; 3]> = vec![];
+            let mut indexvec: Vec<u32> = vec![];
+
+            let mut cnt = 0.0; 
+            let mut cntOld = 0.0;
+            let mut cntVert = 0.0;
+            let mut rot = 0.0;
+        
+            let mut countVertices = 0;
+        
+            let mut add_indi: u32 = 0;
+        
+            for entry in WalkDir::new("./TestTree").into_iter().filter_map(|e| e.ok()) {
+            // for entry in WalkDir::new("/home/nero/code/").into_iter().filter_map(|e| e.ok()) {
+                println!("Entry: {:?} Depth: {:?}", entry.path(), entry.depth() );
+                
+                if entry.file_type().is_dir() 
+                {
+                countVertices += 20;
+
+                // Dive Up and to the side, depending on Directory 
+                for each in ground_vertices { 
+                    
+                    vertexvec.push(   ( // Rotation * Translation -> Transform TriangleVertex -> into Vec<[f32; 3]>
+                                        Affine3A::from_quat(Quat::from_rotation_y(rot)) *
+                                        Affine3A::from_translation(Vec3{
+                                            x:cntVert ,//*0.02,
+                                            y:cnt     ,//*0.02,
+                                            z:0.0})
+                                      )
+                                      .transform_point3( Vec3::from_array(each) ) 
+                                      .into()
+                );
+                }
+
+                // multiply indizes
+                add_indi = 20 * (cnt as u32);
+                indexvec.extend(vec![  
+                        
+                        0+add_indi, 1  +add_indi, 2 +add_indi ,
+                        0+add_indi, 2  +add_indi, 3 +add_indi ,
+                        0+add_indi, 3  +add_indi, 4 +add_indi ,
+        
+                        6+add_indi, 5  +add_indi, 3 +add_indi ,
+                        6+add_indi, 3  +add_indi, 2 +add_indi , 
+                        6+add_indi, 2  +add_indi, 7 +add_indi , 
+          
+                        2+add_indi, 1  +add_indi, 9 +add_indi ,
+                        2+add_indi, 9  +add_indi, 8 +add_indi , 
+                        2+add_indi, 8  +add_indi, 7 +add_indi ,
+          
+                        3+add_indi, 5  +add_indi, 11+add_indi , 
+                        3+add_indi, 11 +add_indi, 10+add_indi ,
+                        3+add_indi, 10 +add_indi, 4 +add_indi ,
+        
+                        5+add_indi, 6  +add_indi, 13+add_indi , 
+                        5+add_indi, 13 +add_indi, 12+add_indi , 
+                        5+add_indi, 12 +add_indi, 11+add_indi , 
+        
+                        1+add_indi, 0  +add_indi, 16+add_indi , 
+                        1+add_indi, 16 +add_indi, 15+add_indi , 
+                        1+add_indi, 15 +add_indi, 9 +add_indi , 
+ 
+                        7+add_indi, 8  +add_indi, 14+add_indi , 
+                        7+add_indi, 14 +add_indi, 13+add_indi , 
+                        7+add_indi, 13 +add_indi, 6 +add_indi , 
+        
+                        4+add_indi, 10 +add_indi, 17+add_indi , 
+                        4+add_indi, 17 +add_indi, 16+add_indi , 
+                        4+add_indi, 16 +add_indi, 0 +add_indi , 
+        
+                        13+add_indi, 14+add_indi, 19+add_indi , 
+                        13+add_indi, 19+add_indi, 18+add_indi , 
+                        13+add_indi, 18+add_indi, 12+add_indi , 
+        
+                        16+add_indi, 17+add_indi, 18+add_indi , 
+                        16+add_indi, 18+add_indi, 19+add_indi , 
+                        16+add_indi, 19+add_indi, 15+add_indi , 
+        
+                        18+add_indi, 17+add_indi, 10+add_indi , 
+                        18+add_indi, 10+add_indi, 11+add_indi , 
+                        18+add_indi, 11+add_indi, 12+add_indi , 
+
+                        19+add_indi, 14+add_indi, 8 +add_indi , 
+                        19+add_indi, 8 +add_indi, 9 +add_indi , 
+                        19+add_indi, 9 +add_indi, 15+add_indi , 
+
+                        ]); 
+
+                // println!("Dir: {:?}", entry.path());
+                // print!("Dir: {:?} Depth: {:?}", entry.path(), entry.depth() );
+                // println!();
+
+                cnt += 1.0;
+                }
+                else if entry.file_type().is_file() 
+                {
+                    cntVert += 1.0; 
+                    // println!("Filename: {:?} \n {:?} \n", entry.file_name(), entry.metadata());
+        
+                    if cnt != cntOld 
+                    {
+                        rot      = rot+1.0;
+                        // cntVert *= -1.0;
+                        cntOld   = cnt; 
+                    }
+                }
+                else if entry.file_type().is_symlink()
+                {
+                    // println!("Symlink: {:?}", entry.file_name());
+                }
+                else 
+                {
+                    //println!("Not Dir nor File: {:?}", entry.file_name());
+                }
+            }
+    
+        println!("Verti: {}", countVertices);
+
+        meshTreedata.mesh.insert_attribute(Mesh::ATTRIBUTE_NORMAL, vec![[0., 1., 0.]; vertexvec.len()]);
+        meshTreedata.mesh.insert_attribute(Mesh::ATTRIBUTE_UV_0, vec![[0., 0.]; vertexvec.len()]);
+        
+        println!("vertexvecLen: {}", vertexvec.len());
+        println!("indexvecLen: {}", indexvec.len());
+    
+        meshTreedata.mesh.insert_attribute(
+            Mesh::ATTRIBUTE_POSITION,
+            vertexvec,
+        );
+
+        meshTreedata.mesh.set_indices(Some(mesh::Indices::U32(indexvec)));
+
+        // Handing back the generated mesh
+        meshTreedata.mesh.clone()
+}
+
 /// set up a simple 3D scene
 fn setup(
     mut commands: Commands,
@@ -204,7 +430,7 @@ fn setup(
 // Mesh Transmutation Experiment Spawning ///////////////////////////////////////////////////////
 
     // Initiate Treebuilder
-    let mut treebuilder = Treebuilder::new();
+    // let mut treebuilder = Treebuilder::new();
 
     // Dirwalk test
     // treebuilder.dirwalk();
@@ -213,7 +439,7 @@ fn setup(
     // let cube_mesh_handle: Handle<Mesh> = meshes.add(create_cube_mesh());
 
     // Generate Mesh, add it to meshes, save mesh handle in Treedata
-    meshTreedata.mesh_handle = meshes.add( treebuilder.generate_mesh( &mut meshTreedata, /*&mut commands*/ ));
+    meshTreedata.mesh_handle = meshes.add( generate_tree_mesh( &mut meshTreedata, /*&mut commands*/ ));
     // meshTreedata.mesh_handle = meshes.add( Treebuilder::generate_mesh( &mut meshTreedata));
 
 
