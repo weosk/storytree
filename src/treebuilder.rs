@@ -15,7 +15,7 @@ pub struct  Treebuilder{
     // material: bevy_pbr::StandardMaterial>,
 }
 
-impl Treebuilder{
+// impl Treebuilder{
     pub fn new() -> Self
     {
             Self { mesh: bevy::prelude::Mesh::new(PrimitiveTopology::TriangleList) }
