@@ -40,8 +40,9 @@ fn main() {
 
     App::new()
         .add_plugins(DefaultPlugins)
+        .insert_resource(ClearColor(Color::rgb(0.01, 0.01, 0.1)))
         .insert_resource(Treedata{ mesh: Mesh::new(PrimitiveTopology::TriangleList), mesh_handle: Default::default() } )
-        .init_resource::<Treedata>()
+        //.init_resource::<Treedata>()
         .add_systems(Startup, setup)
         .add_systems(Update, (bevy::window::close_on_esc, process_inputs_system, animate_light_direction, update_scale))
         .insert_resource(AmbientLight {
@@ -212,7 +213,7 @@ fn setup(
     // let cube_mesh_handle: Handle<Mesh> = meshes.add(create_cube_mesh());
 
     // Generate Mesh, add it to meshes, save mesh handle in Treedata
-    meshTreedata.mesh_handle = meshes.add( treebuilder.generate_mesh( &mut meshTreedata));
+    meshTreedata.mesh_handle = meshes.add( treebuilder.generate_mesh( &mut meshTreedata, /*&mut commands*/ ));
     // meshTreedata.mesh_handle = meshes.add( Treebuilder::generate_mesh( &mut meshTreedata));
 
 

@@ -62,10 +62,30 @@ impl Treebuilder{
     
         let mut add_indi: u32 = 0;
     
-        for entry in WalkDir::new("/").into_iter().filter_map(|e| e.ok()) {
+        for entry in WalkDir::new("/home").into_iter().filter_map(|e| e.ok()) {
             countVertices += 12;
             if entry.file_type().is_dir() 
             {
+
+                    // // Text to describe the controls.
+                    // commands.spawn(
+                    //     TextBundle::from_section(
+                    //         entry.file_name().to_str().unwrap(),
+                    //         TextStyle {
+                    //             font_size: 20.0,
+                    //             ..default()
+                    //         },
+                    //     )
+                    //     .with_style(Style {
+                    //         position_type: PositionType::Absolute,
+                    //         top: Val::Px(12.0),
+                    //         left: Val::Px(12.0),
+                    //         ..default()
+                    //     }),
+                    // );
+
+
+
                 // Dive Up and to the side, depending on Directory 
                 for each in ground_vertices { 
                     
@@ -197,7 +217,7 @@ impl Treebuilder{
         mut meshTreedata: &mut ResMut<Treedata>,
     ) -> Mesh {
 
-        let font_data = include_bytes!("/home/ben/projects/rust/fonts/Roboto-Thin.ttf");
+        let font_data = include_bytes!("/home/nero/code/rust/storytree/assets/fonts/Roboto-Thin.ttf");
         let mut generator = MeshGenerator::new(font_data);
     
         // indices.extend(vec![ 1, 2, 3, 4 ]);
