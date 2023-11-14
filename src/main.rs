@@ -58,24 +58,6 @@ fn main() {
 }
 
 
-fn update_scale(
-    keys: Res<Input<KeyCode>>,
-    mut tree: Query<(&mut Transform, &treemeshmarker)>,
-)
-{
-    if keys.pressed(KeyCode::Key1) {
-        for (mut transform, cube) in &mut tree {
-            transform.scale *= Vec3{x: 0.9,y:0.9,z: 0.9};
-        }
-        // println!("Works1");
-    }
-    if keys.pressed(KeyCode::Key2) {
-        for (mut transform, cube) in &mut tree {
-            transform.scale *= Vec3{x: 1.1,y:1.1,z: 1.1};
-        }
-    }
-
-}
 
 /// This system prints out all mouse events as they come in
 fn process_inputs_system(
@@ -290,15 +272,24 @@ fn generate_tree_mesh(
             let mut cnt = 0.0; 
             let mut cntOld = 0.0;
             let mut cntVert = 0.0;
-            let mut rot = 0.0;
+            // let mut rot = 0.0;
         
             let mut countVertices = 0;
         
             let mut add_indi: u32 = 0;
-        
-            for entry in WalkDir::new("./TestTree").into_iter().filter_map(|e| e.ok()) {
-            // for entry in WalkDir::new("/home/nero/code/").into_iter().filter_map(|e| e.ok()) {
-                println!("Entry: {:?} Depth: {:?}", entry.path(), entry.depth() );
+
+
+            let mut rot : Vec3 = Vec3{x:0.0,
+                                      y:1.0,
+                                      z:0.0};
+
+            let mut trans : Vec3 = Vec3{x:0.0,
+                                        y:1.0,
+                                        z:0.0};
+
+            for entry in WalkDir::new("/").into_iter().filter_map(|e| e.ok()) {        
+            // for entry in WalkDir::new("./TestTree").into_iter().filter_map(|e| e.ok()) {
+                // println!("Entry: {:?} Depth: {:?}", entry.path(), entry.depth()  );
                 
                 if entry.file_type().is_dir() 
                 {
@@ -308,11 +299,11 @@ fn generate_tree_mesh(
                 for each in ground_vertices { 
                     
                     vertexvec.push(   ( // Rotation * Translation -> Transform TriangleVertex -> into Vec<[f32; 3]>
-                                        Affine3A::from_quat(Quat::from_rotation_y(rot)) *
+                                        Affine3A::from_quat(Quat::from_rotation_x(rot.x)*Quat::from_rotation_y(rot.y)*Quat::from_rotation_z(rot.z)) *
                                         Affine3A::from_translation(Vec3{
-                                            x:cntVert ,//*0.02,
-                                            y:cnt     ,//*0.02,
-                                            z:0.0})
+                                            x: trans.x,
+                                            y: trans.y,
+                                            z: trans.z })
                                       )
                                       .transform_point3( Vec3::from_array(each) ) 
                                       .into()
@@ -386,8 +377,15 @@ fn generate_tree_mesh(
         
                     if cnt != cntOld 
                     {
-                        rot      = rot+1.0;
-                        // cntVert *= -1.0;
+                        trans.x = cntVert * entry.depth() as f32 *0.02;
+                        trans.y = cnt;
+                        trans.z = 0.0;
+
+                        rot.x      = rot.x+1.0;
+                        rot.y      = rot.y+1.0;
+                        rot.z      = rot.z+1.0;
+
+                        cntVert *= -1.0;
                         cntOld   = cnt; 
                     }
                 }
@@ -540,6 +538,7 @@ fn setup(
     
 }
 
+
 fn animate_light_direction(
     time: Res<Time>,
     mut query: Query<&mut Transform, With<DirectionalLight>>,
@@ -547,7 +546,39 @@ fn animate_light_direction(
 ) {
     // println!("Cam: {:?}", q_cam.single_mut().pos);
     for mut transform in &mut query {
-        *transform = Transform::from_rotation(q_cam.single_mut().rot) * Transform::from_xyz(0.0, q_cam.single_mut().pos.y+30.0, 0.0);
+        *transform = Transform::from_rotation(q_cam.single_mut().rot) * Transform::from_xyz(0.0, q_cam.single_mut().pos.y+0.0, 0.0);
         //transform.rotate_y(time.delta_seconds() * 0.5);
     }
+}
+
+
+fn update_scale(
+    keys: Res<Input<KeyCode>>,
+    mut tree: Query<(&mut Transform, &treemeshmarker)>,
+)
+{
+    // Scale 
+    if keys.pressed(KeyCode::Key1) {
+        for (mut transform, cube) in &mut tree {
+            transform.scale *= Vec3{x: 0.9,y:0.9,z: 0.9};
+        }
+    }
+    if keys.pressed(KeyCode::Key2) {
+        for (mut transform, cube) in &mut tree {
+            transform.scale *= Vec3{x: 1.1,y:1.1,z: 1.1};
+        }
+    }
+
+    // Fine scale
+    if keys.pressed(KeyCode::Key3) {
+        for (mut transform, cube) in &mut tree {
+            transform.scale *= Vec3{x: 0.99,y:0.99,z: 0.99};
+        }
+    }
+    if keys.pressed(KeyCode::Key4) {
+        for (mut transform, cube) in &mut tree {
+            transform.scale *= Vec3{x: 1.01,y:1.01,z: 1.01};
+        }
+    }
+
 }
