@@ -1,25 +1,26 @@
-
 //! A simple 3D scene with light shining over a cube sitting on a plane.
-use bevy::math::*;
-use bevy::pbr::CascadeShadowConfigBuilder;
-use bevy::prelude::World;
-use bevy::render::primitives::Frustum;
+
+use std::{env, fs, iter::Map};
+
 use bevy::{
+    math::*,
+    prelude::*, 
+    render::mesh::{self, PrimitiveTopology, Indices},
     input::mouse::{MouseButtonInput, MouseMotion, MouseWheel},
-    prelude::*, render::primitives::HalfSpace,
 };
 
-use std::{fs, iter::Map};
-use std::env;
 use walkdir::WalkDir;
 
-use bevy::render::mesh::{self, PrimitiveTopology, Indices};
+// mod textgenerator;
 
-mod treedata;
-use treedata::Treedata;
+// mod treedata;
+// use treedata::Treedata;
 
-mod treebuilder;
-use treebuilder::Treebuilder;
+mod generator;
+use generator::generate_space_mesh;
+
+// mod treebuilder;
+// use treebuilder::Treebuilder;
 
 #[derive(Component, Debug)]
 struct Cam
@@ -40,11 +41,10 @@ fn main() {
 
     App::new()
         .add_plugins(DefaultPlugins)
-        .insert_resource(ClearColor(Color::rgb(0.01, 0.01, 0.1)))
-        .insert_resource(Treedata{ mesh: Mesh::new(PrimitiveTopology::TriangleList), mesh_handle: Default::default() } )
-        //.init_resource::<Treedata>()
+        .insert_resource(ClearColor(Color::rgb(0.01, 0.01, 0.1))) // Background 2 Darkblu
         .add_systems(Startup, setup)
         .add_systems(Update, (bevy::window::close_on_esc, process_inputs_system, animate_light_direction, update_scale))
+
         .insert_resource(AmbientLight {
             color: Color::Rgba {
                 red: 0.95,
@@ -54,6 +54,7 @@ fn main() {
             },
             brightness: 0.5,},
         )
+
         .run();
 }
 
@@ -172,282 +173,26 @@ fn process_inputs_system(
     //println!("cnt: {}",cnt);
 }
 
-fn print_typename<T>(_: &T) {
-    println!("{}", std::any::type_name::<T>())
-}
-
-fn generate_tree_mesh(
-    mut meshTreedata: &mut ResMut<Treedata>,
-) -> Mesh {
-        let PHI: f32 = 1.618033989; 
-
-        // Vertices
-        // Plain Data dodecaeder
-        let mut ground_vertices: [[f32; 3]; 20] =   
-            [   [  0.,      -1./PHI,  -PHI ], // 0
-                [  1.,      -1.,      -1.  ], // 1
-                [  1./PHI,  -PHI,     0.   ], // 2
-                [  -1./PHI, -PHI,     0.   ], // 3
-                [  -1.,     -1.,      -1.  ], // 4
-
-                [  -1.,      -1.,      1.  ], // 5
-                [  0.,      -1./PHI,  PHI  ], // 6
-                [  1.,      -1.,      1.   ], // 7
-
-                [  PHI,      0.,    1./PHI ], // 8
-                [  PHI,      0.,   -1./PHI ], // 9
-                [  -PHI,     0.,   -1./PHI ], // 10
-                [  -PHI,     0.,    1./PHI ], // 11
-
-                // Gespiegelt an der XZ Ebene, -> Werte von 0 - 7 mit positiver y achse
-
-                [  -1.,      1.,      1.  ], // 12
-                [  0.,       1./PHI,  PHI  ], // 13
-                [  1.,       1.,      1.   ], // 14
-                [  1.,       1.,      -1.  ], // 15
-                [  0.,       1./PHI,  -PHI ], // 16
-                [  -1.,      1.,      -1.  ], // 17
-                [  -1./PHI,  PHI,     0.   ], // 18
-                [  1./PHI,   PHI,     0.   ]  // 19 
-                ];
-
-        let ground_indices = [         
-                0, 1, 2,
-                0, 2, 3,
-                0, 3, 4,
-
-                6, 5, 3,
-                6, 3, 2, 
-                6, 2, 7,
-
-                2, 1, 9,
-                2, 9, 8, 
-                2, 8, 7,
-
-                3, 5, 11, 
-                3, 11, 10,
-                3, 10, 4,
-
-                5, 6, 13, 
-                5, 13, 12, 
-                5, 12, 11, 
-
-                1, 0, 16, 
-                1, 16, 15, 
-                1, 15, 9, 
-
-                // Halber Dodecaeder Formuliert in symmetrie, für möglichkeit zur animierten öffnung
-
-                7, 8, 14, 
-                7, 14, 13, 
-                7, 13, 6, 
-
-                4, 10, 17, 
-                4, 17, 16, 
-                4, 16, 0, 
-
-                13, 14, 19, 
-                13, 19, 18, 
-                13, 18, 12, 
-
-                16, 17, 18, 
-                16, 18, 19, 
-                16, 19, 15, 
-
-                18, 17, 10, 
-                18, 10, 11, 
-                18, 11, 12, 
-
-                19, 14, 8, 
-                19, 8, 9, 
-                19, 9, 15, 
-            ];
-
-            // Transformations Matrix
-            let tmat:Affine3A = Affine3A::from_translation(Vec3{x:0.0,y:1.0,z:0.0}.into());
-
-            let mut vertexvec: Vec<[f32; 3]> = vec![];
-            let mut indexvec: Vec<u32> = vec![];
-
-            let mut cnt = 0.0; 
-            let mut cntOld = 0.0;
-            let mut cntVert = 0.0;
-            // let mut rot = 0.0;
-        
-            let mut countVertices = 0;
-        
-            let mut add_indi: u32 = 0;
-
-
-            let mut rot : Vec3 = Vec3{x:0.0,
-                                      y:1.0,
-                                      z:0.0};
-
-            let mut trans : Vec3 = Vec3{x:0.0,
-                                        y:1.0,
-                                        z:0.0};
-
-            for entry in WalkDir::new("/").into_iter().filter_map(|e| e.ok()) {        
-            // for entry in WalkDir::new("./TestTree").into_iter().filter_map(|e| e.ok()) {
-                // println!("Entry: {:?} Depth: {:?}", entry.path(), entry.depth()  );
-                
-                if entry.file_type().is_dir() 
-                {
-                countVertices += 20;
-
-                // Dive Up and to the side, depending on Directory 
-                for each in ground_vertices { 
-                    
-                    vertexvec.push(   ( // Rotation * Translation -> Transform TriangleVertex -> into Vec<[f32; 3]>
-                                        Affine3A::from_quat(Quat::from_rotation_x(rot.x)*Quat::from_rotation_y(rot.y)*Quat::from_rotation_z(rot.z)) *
-                                        Affine3A::from_translation(Vec3{
-                                            x: trans.x,
-                                            y: trans.y,
-                                            z: trans.z })
-                                      )
-                                      .transform_point3( Vec3::from_array(each) ) 
-                                      .into()
-                );
-                }
-
-                // multiply indizes
-                add_indi = 20 * (cnt as u32);
-                indexvec.extend(vec![  
-                        
-                        0+add_indi, 1  +add_indi, 2 +add_indi ,
-                        0+add_indi, 2  +add_indi, 3 +add_indi ,
-                        0+add_indi, 3  +add_indi, 4 +add_indi ,
-        
-                        6+add_indi, 5  +add_indi, 3 +add_indi ,
-                        6+add_indi, 3  +add_indi, 2 +add_indi , 
-                        6+add_indi, 2  +add_indi, 7 +add_indi , 
-          
-                        2+add_indi, 1  +add_indi, 9 +add_indi ,
-                        2+add_indi, 9  +add_indi, 8 +add_indi , 
-                        2+add_indi, 8  +add_indi, 7 +add_indi ,
-          
-                        3+add_indi, 5  +add_indi, 11+add_indi , 
-                        3+add_indi, 11 +add_indi, 10+add_indi ,
-                        3+add_indi, 10 +add_indi, 4 +add_indi ,
-        
-                        5+add_indi, 6  +add_indi, 13+add_indi , 
-                        5+add_indi, 13 +add_indi, 12+add_indi , 
-                        5+add_indi, 12 +add_indi, 11+add_indi , 
-        
-                        1+add_indi, 0  +add_indi, 16+add_indi , 
-                        1+add_indi, 16 +add_indi, 15+add_indi , 
-                        1+add_indi, 15 +add_indi, 9 +add_indi , 
- 
-                        7+add_indi, 8  +add_indi, 14+add_indi , 
-                        7+add_indi, 14 +add_indi, 13+add_indi , 
-                        7+add_indi, 13 +add_indi, 6 +add_indi , 
-        
-                        4+add_indi, 10 +add_indi, 17+add_indi , 
-                        4+add_indi, 17 +add_indi, 16+add_indi , 
-                        4+add_indi, 16 +add_indi, 0 +add_indi , 
-        
-                        13+add_indi, 14+add_indi, 19+add_indi , 
-                        13+add_indi, 19+add_indi, 18+add_indi , 
-                        13+add_indi, 18+add_indi, 12+add_indi , 
-        
-                        16+add_indi, 17+add_indi, 18+add_indi , 
-                        16+add_indi, 18+add_indi, 19+add_indi , 
-                        16+add_indi, 19+add_indi, 15+add_indi , 
-        
-                        18+add_indi, 17+add_indi, 10+add_indi , 
-                        18+add_indi, 10+add_indi, 11+add_indi , 
-                        18+add_indi, 11+add_indi, 12+add_indi , 
-
-                        19+add_indi, 14+add_indi, 8 +add_indi , 
-                        19+add_indi, 8 +add_indi, 9 +add_indi , 
-                        19+add_indi, 9 +add_indi, 15+add_indi , 
-
-                        ]); 
-
-                // println!("Dir: {:?}", entry.path());
-                // print!("Dir: {:?} Depth: {:?}", entry.path(), entry.depth() );
-                // println!();
-
-                cnt += 1.0;
-                }
-                else if entry.file_type().is_file() 
-                {
-                    cntVert += 1.0; 
-                    // println!("Filename: {:?} \n {:?} \n", entry.file_name(), entry.metadata());
-        
-                    if cnt != cntOld 
-                    {
-                        trans.x = cntVert * entry.depth() as f32 *0.02;
-                        trans.y = cnt;
-                        trans.z = 0.0;
-
-                        rot.x      = rot.x+1.0;
-                        rot.y      = rot.y+1.0;
-                        rot.z      = rot.z+1.0;
-
-                        cntVert *= -1.0;
-                        cntOld   = cnt; 
-                    }
-                }
-                else if entry.file_type().is_symlink()
-                {
-                    // println!("Symlink: {:?}", entry.file_name());
-                }
-                else 
-                {
-                    //println!("Not Dir nor File: {:?}", entry.file_name());
-                }
-            }
-    
-        println!("Verti: {}", countVertices);
-
-        meshTreedata.mesh.insert_attribute(Mesh::ATTRIBUTE_NORMAL, vec![[0., 1., 0.]; vertexvec.len()]);
-        meshTreedata.mesh.insert_attribute(Mesh::ATTRIBUTE_UV_0, vec![[0., 0.]; vertexvec.len()]);
-        
-        println!("vertexvecLen: {}", vertexvec.len());
-        println!("indexvecLen: {}", indexvec.len());
-    
-        meshTreedata.mesh.insert_attribute(
-            Mesh::ATTRIBUTE_POSITION,
-            vertexvec,
-        );
-
-        meshTreedata.mesh.set_indices(Some(mesh::Indices::U32(indexvec)));
-
-        // Handing back the generated mesh
-        meshTreedata.mesh.clone()
-}
-
 /// set up a simple 3D scene
 fn setup(
     mut commands: Commands,
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<StandardMaterial>>,
-    mut meshTreedata: ResMut<Treedata>,
+
+    asset_server: Res<AssetServer>,
 ) {
-// Mesh Transmutation Experiment Spawning ///////////////////////////////////////////////////////
 
-    // Initiate Treebuilder
-    // let mut treebuilder = Treebuilder::new();
-
-    // Dirwalk test
-    // treebuilder.dirwalk();
-
-    // TODO? -> Handle<Mesh> entry to save in treedata? How to init to default?
-    // let cube_mesh_handle: Handle<Mesh> = meshes.add(create_cube_mesh());
-
-    // Generate Mesh, add it to meshes, save mesh handle in Treedata
-    meshTreedata.mesh_handle = meshes.add( generate_tree_mesh( &mut meshTreedata, /*&mut commands*/ ));
-    // meshTreedata.mesh_handle = meshes.add( Treebuilder::generate_mesh( &mut meshTreedata));
-
-
-
-    // meshTreedata.mesh_handle = meshes.add( treebuilder.generate_text_mesh( &mut meshTreedata));
+    // Mesh Transmutation Experiment Spawning ///////////////////////////////////////////////////////
 
     let scalef = 1.0; 
     commands.spawn((PbrBundle {
-        mesh: meshTreedata.mesh_handle.clone(), // Clone Meshhandle to meshspawn
-        material: materials.add(Color::rgb(0.6, 0.3, 0.1).into()),
+        mesh: meshes.add(generator::generate_space_mesh()),
+
+        // material: materials.add(Color::rgb(0.6, 0.3, 0.1).into()),
+        material: materials.add(StandardMaterial {
+            base_color_texture: Some(asset_server.load("lettersheetEdges.png")),
+            ..default()
+        }),
         transform: Transform::from_scale(Vec3{x:scalef,y:scalef,z:scalef}),
         ..default()
         },
@@ -536,6 +281,12 @@ fn setup(
     //     ..default()
     // })
     
+}
+
+// --- // --- // Utils \\ --- \\ --- \\
+
+fn print_typename<T>(_: &T) {
+    println!("{}", std::any::type_name::<T>())
 }
 
 
