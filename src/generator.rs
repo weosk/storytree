@@ -98,6 +98,9 @@ pub fn generate_space_mesh(
             let mut vertexvec: Vec<[f32; 3]> = vec![];
             let mut indexvec: Vec<u32> = vec![];
 
+            let mut uvvec: Vec<[f32;2]> = vec![];
+
+
             let mut cnt = 0.0; 
             let mut cntOld = 0.0;
             let mut cntVert = 0.0;
@@ -159,7 +162,7 @@ pub fn generate_space_mesh(
                                             y: trans.y,
                                             z: trans.z })
                                       )
-                                      .transform_point3( Vec3::from_array(each) ) 
+                                      .transform_point3( Vec3::from_array(each) ) // Each Ground Vertex gets pushed where it should go
                                       .into()
                 );
                 }
@@ -218,6 +221,38 @@ pub fn generate_space_mesh(
 
                         ]); 
 
+                    uvvec.extend(vec![  [-0.1,0.5], //0
+                                        [0.1,1.],  //1
+
+                                        [0.5,1.], //2
+                                        [0.5,0.], //3
+                                        
+                                        [0.1,0.],  //4
+
+                                        [0.9,0.],  //5
+                                        [1.1,0.5], //6
+                                        [0.9,1.],   //7
+
+
+                                        [0.,1.], //8
+                                        [0.,1.], //9
+                                        [1.,0.], //10
+                                        [1.,0.], //11
+
+
+                                        [0.1,0.],  //12
+                                        [-0.1,0.5],//13
+                                        [0.1,1.],  //14
+
+                                        [0.9,1.],   //15
+                                        [1.1,0.5], //16
+
+                                        [0.9,0.],  //17
+                                        [0.5,0.], //18
+                                        [0.5,1.], //19
+
+                                    ]);
+
                 // println!("Dir: {:?}", entry.path());
                 // print!("Dir: {:?} Depth: {:?}", entry.path(), entry.depth() );
                 // println!();
@@ -260,9 +295,106 @@ pub fn generate_space_mesh(
         let mut treemesh : Mesh = Mesh::new(PrimitiveTopology::TriangleList);
 
         treemesh.insert_attribute(Mesh::ATTRIBUTE_NORMAL, vec![[0., 1., 0.]; vertexvec.len()]);
-        treemesh.insert_attribute(Mesh::ATTRIBUTE_UV_0, vec![[0., 1.]; vertexvec.len()]);
-        
-        
+        treemesh.insert_attribute(Mesh::ATTRIBUTE_UV_0, uvvec);
+
+        // treemesh.insert_attribute(Mesh::ATTRIBUTE_UV_0, vec![
+        //     [-0.1,0.5], //0
+        //     [0.1,1.],  //1
+
+        //     [0.5,1.], //2
+        //     [0.5,0.], //3
+            
+        //     [0.1,0.],  //4
+
+        //     [0.9,0.],  //5
+        //     [1.1,0.5], //6
+        //     [0.9,1.],   //7
+
+
+        //     [0.,1.], //8
+        //     [0.,1.], //9
+        //     [1.,0.], //10
+        //     [1.,0.], //11
+
+
+        //     [0.1,0.],  //12
+        //     [-0.1,0.5],//13
+        //     [0.1,1.],  //14
+
+        //     [0.9,1.],   //15
+        //     [1.1,0.5], //16
+
+        //     [0.9,0.],  //17
+        //     [0.5,0.], //18
+        //     [0.5,1.], //19
+
+
+        //     ]);
+
+
+        // treemesh.insert_attribute(Mesh::ATTRIBUTE_UV_0, vec![
+        //     [-0.1,0.5], //0
+        //     [0.1,1.],  //1
+
+        //     [0.5,1.], //2
+        //     [0.5,0.], //3
+            
+        //     [0.1,0.],  //4
+
+        //     [0.9,0.],  //5
+        //     [1.1,0.5], //6
+        //     [0.9,1.],   //7
+
+
+        //     [0.,1.], //8
+        //     [0.,1.], //9
+        //     [1.,0.], //10
+        //     [1.,0.], //11
+
+
+        //     [0.1,0.],  //12
+        //     [-0.1,0.5],//13
+        //     [0.1,1.],  //14
+
+        //     [0.9,1.],   //15
+        //     [1.1,0.5], //16
+
+        //     [0.9,0.],  //17
+        //     [0.5,0.], //18
+        //     [0.5,1.], //19
+
+
+        //     ]);
+        // [1.,0.],
+        // [1.,1.],
+        // [0.,1.],
+
+        // [0., 0.],
+        // [-1.5, 0.],
+        // [1.,0.],
+        // [1.,1.],
+        // [0.,1.],
+
+        // [0., 0.],
+        // [-1.5, 0.],
+        // [1.,0.],
+        // [1.,1.],
+        // [0.,1.],
+
+        // [0., 0.],
+        // [-1.5, 0.],
+        // [1.,0.],
+        // [1.,1.],
+        // [0.,1.],
+
+        // [0., 0.],
+        // [-1.5, 0.],
+        // [1.,0.],
+        // [1.,1.],
+        // [0.,1.]
+
+        // ]);
+
         println!("vertexvecLen: {}", vertexvec.len());
         println!("indexvecLen: {}", indexvec.len());
         println!("NumberOfEntries: {}", cntAllFiles);

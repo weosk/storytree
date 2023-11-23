@@ -55,9 +55,14 @@ fn main() {
             brightness: 0.5,},
         )
 
+        
+
         .run();
 }
 
+fn count_entities(all_entities: Query<()>) {
+    dbg!(all_entities.iter().count());
+}
 
 
 /// This system prints out all mouse events as they come in
@@ -190,7 +195,8 @@ fn setup(
 
         // material: materials.add(Color::rgb(0.6, 0.3, 0.1).into()),
         material: materials.add(StandardMaterial {
-            base_color_texture: Some(asset_server.load("lettersheetEdges.png")),
+            // base_color_texture: Some(asset_server.load("lettersheetEdges.png")),
+            base_color_texture: Some(asset_server.load("branchorange.png")),
             ..default()
         }),
         transform: Transform::from_scale(Vec3{x:scalef,y:scalef,z:scalef}),
