@@ -189,9 +189,11 @@ fn setup(
 
     // Mesh Transmutation Experiment Spawning ///////////////////////////////////////////////////////
 
+    // Textmesh
     let scalef = 1.0; 
     commands.spawn((PbrBundle {
-        mesh: meshes.add(generator::generate_space_mesh()),
+        // mesh: meshes.add(generator::generate_space_mesh()),
+        mesh: meshes.add(generator::generate_text_mesh()),
 
         // material: materials.add(Color::rgb(0.6, 0.3, 0.1).into()),
         material: materials.add(StandardMaterial {
@@ -204,6 +206,23 @@ fn setup(
         },
         treemeshmarker,)
         );
+
+        // Spacemesh
+        commands.spawn((PbrBundle {
+            mesh: meshes.add(generator::generate_space_mesh()),
+            // mesh: meshes.add(generator::generate_text_mesh()),
+    
+            // material: materials.add(Color::rgb(0.6, 0.3, 0.1).into()),
+            material: materials.add(StandardMaterial {
+                // base_color_texture: Some(asset_server.load("lettersheetEdges.png")),
+                base_color_texture: Some(asset_server.load("branchorange.png")),
+                ..default()
+            }),
+            transform: Transform::from_scale(Vec3{x:scalef,y:scalef,z:scalef}),
+            ..default()
+            },
+            treemeshmarker,)
+            );
 
     // Default Spawn of Scene Spawning ///////////////////////////////////////////////////////
 

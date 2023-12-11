@@ -4,6 +4,8 @@ use bevy::math::*;      // Affine3A
 use bevy::prelude::*;   
 use walkdir::WalkDir;
 
+use meshtext::{MeshGenerator, MeshText, TextSection, QualitySettings};
+use std::time::Instant;
 
 pub fn generate_space_mesh(
     //mut meshTreedata: &mut ResMut<Treedata>,
@@ -411,4 +413,69 @@ pub fn generate_space_mesh(
 
         // Handing back the generated mesh
         treemesh.clone()
+}
+
+
+pub fn generate_text_mesh(
+    //mut meshTreedata: &mut ResMut<Treedata>,
+) -> Mesh {
+
+    let before = Instant::now();
+
+    let font_data = include_bytes!("/home/nero/code/rust/storytree/assets/fonts/Roboto-Regular.ttf");
+    let mut generator = MeshGenerator::new_with_quality(font_data, QualitySettings{quad_interpolation_steps:1,cubic_interpolation_steps:1});
+
+    let common = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789".to_string();
+    // Precache both flat and three-dimensional glyphs both for indexed and non-indexed meshes.
+    generator.precache_glyphs(&common, false, None);
+    generator.precache_glyphs(&common, true, None);
+
+            // let mut vertexvec: Vec<[f32; 3]> = vec![];
+    let mut collection = vec![];
+    let mut cnt = 0;
+    let mut depthOld = 0;
+    let mut xOff = 0.;
+    let mut rot = 0.;
+    for entry in WalkDir::new("/").into_iter().filter_map(|e| e.ok()) {        
+            if entry.file_type().is_dir() 
+            {   
+                if depthOld != entry.depth()
+                {
+                    if depthOld < entry.depth() {
+                        xOff += 0.1;
+                    }
+                    if depthOld > entry.depth() {
+                        rot += 0.1;
+                    }
+                    depthOld = entry.depth();
+                }
+                cnt += 1;
+                let transform = (Mat4::from_rotation_y(-rot) * Mat4::from_translation(Vec3::new(cnt as f32 *0.2, entry.depth() as f32 * 5., -xOff as f32 * 0.5))).to_cols_array();
+
+                let text_mesh: MeshText = generator
+                    .generate_section(entry.file_name().to_str().unwrap(), true, Some(&transform))
+                    .unwrap();
+
+                collection.extend(text_mesh.vertices);
+            }
+    }
+
+    let vertices = collection;
+    let positions: Vec<[f32; 3]> = vertices.chunks(3).map(|c| [c[0], c[1], c[2]]).collect();
+
+
+    println!("Poslength: {}", positions.len());
+
+
+    let uvs = vec![[0f32, 0f32]; positions.len()];
+
+    let mut mesh = Mesh::new(bevy::render::render_resource::PrimitiveTopology::TriangleList);
+    mesh.insert_attribute(Mesh::ATTRIBUTE_POSITION, positions);
+    mesh.insert_attribute(Mesh::ATTRIBUTE_UV_0, uvs);
+    mesh.compute_flat_normals();
+
+    println!("Text generation time: {:?}", before.elapsed());
+
+    mesh
+
 }
