@@ -6,7 +6,7 @@ use bevy::{
     math::*,
     prelude::*, 
     render::mesh::{self, PrimitiveTopology, Indices},
-    input::mouse::{MouseButtonInput, MouseMotion, MouseWheel},
+    input::mouse::{MouseButtonInput, MouseMotion, MouseWheel}, pbr::wireframe::WireframeConfig,
 };
 
 use walkdir::WalkDir;
@@ -17,7 +17,7 @@ use walkdir::WalkDir;
 // use treedata::Treedata;
 
 mod generator;
-use generator::generate_space_mesh;
+// use generator::generate_space_mesh;
 
 // mod treebuilder;
 // use treebuilder::Treebuilder;
@@ -54,8 +54,6 @@ fn main() {
             },
             brightness: 0.5,},
         )
-
-        
 
         .run();
 }
@@ -177,7 +175,10 @@ fn process_inputs_system(
     // }
     //println!("cnt: {}",cnt);
 }
-
+enum GenerationType {
+    Cone, 
+    Tree, 
+}
 /// set up a simple 3D scene
 fn setup(
     mut commands: Commands,
@@ -188,13 +189,16 @@ fn setup(
 ) {
 
     // Mesh Transmutation Experiment Spawning ///////////////////////////////////////////////////////
+    let text_mesh;
+    let space_mesh;
+    (text_mesh, space_mesh) = generator::walk_path_to_mesh("/etc", generator::GenerationType::Tree);
 
     // Textmesh
+
     let scalef = 1.0; 
     commands.spawn((PbrBundle {
         // mesh: meshes.add(generator::generate_space_mesh()),
-        mesh: meshes.add(generator::generate_text_mesh()),
-
+        mesh: meshes.add(text_mesh),
         // material: materials.add(Color::rgb(0.6, 0.3, 0.1).into()),
         material: materials.add(StandardMaterial {
             // base_color_texture: Some(asset_server.load("lettersheetEdges.png")),
@@ -207,12 +211,25 @@ fn setup(
         treemeshmarker,)
         );
 
+    // let scalef = 1.0; 
+    // commands.spawn((PbrBundle {
+    //     // mesh: meshes.add(generator::generate_space_mesh()),
+    //     mesh: meshes.add(generator::generate_text_mesh("/dev/")),
+    //     // material: materials.add(Color::rgb(0.6, 0.3, 0.1).into()),
+    //     material: materials.add(StandardMaterial {
+    //         // base_color_texture: Some(asset_server.load("lettersheetEdges.png")),
+    //         base_color_texture: Some(asset_server.load("branchorange.png")),
+    //         ..default()
+    //     }),
+    //     transform: Transform::from_scale(Vec3{x:scalef,y:scalef,z:scalef}),
+    //     ..default()
+    //     },
+    //     treemeshmarker,)
+    //     );
+
         // Spacemesh
         commands.spawn((PbrBundle {
-            mesh: meshes.add(generator::generate_space_mesh()),
-            // mesh: meshes.add(generator::generate_text_mesh()),
-    
-            // material: materials.add(Color::rgb(0.6, 0.3, 0.1).into()),
+            mesh: meshes.add(space_mesh),
             material: materials.add(StandardMaterial {
                 // base_color_texture: Some(asset_server.load("lettersheetEdges.png")),
                 base_color_texture: Some(asset_server.load("branchorange.png")),
@@ -258,7 +275,7 @@ fn setup(
     //             },
     //         ..default()
     //     },
-    //     transform: Transform::from_xyz(0.0, 8.0, 0.0),
+    //     transform: Transform::from_xyz(0.0, 20.0, 0.0) * Transform::from_rotation(Quat::from_rotation_x(90.) ),
     //     ..default()
     // });
 
@@ -274,7 +291,7 @@ fn setup(
             shadows_enabled: true,
             ..default()
         },
-        transform: Transform::from_rotation(Quat::from_rotation_x(-90.) ),
+        transform: Transform::from_xyz(0.,200.,0.)*Transform::from_rotation(Quat::from_rotation_x(-90.)),
         ..default()
     });
 
@@ -322,7 +339,7 @@ fn animate_light_direction(
 ) {
     // println!("Cam: {:?}", q_cam.single_mut().pos);
     for mut transform in &mut query {
-        *transform = Transform::from_rotation(q_cam.single_mut().rot) * Transform::from_xyz(0.0, q_cam.single_mut().pos.y+0.0, 0.0);
+        // *transform = Transform::from_rotation(q_cam.single_mut().rot) * Transform::from_xyz(0.0, q_cam.single_mut().pos.y+0.0, 0.0);
         //transform.rotate_y(time.delta_seconds() * 0.5);
     }
 }
