@@ -191,7 +191,7 @@ fn setup(
     // Mesh Transmutation Experiment Spawning ///////////////////////////////////////////////////////
     let text_mesh;
     let space_mesh;
-    (text_mesh, space_mesh) = generator::walk_path_to_mesh("/etc", generator::GenerationType::Tree);
+    (text_mesh, space_mesh) = generator::walk_path_to_mesh("/etc/", generator::GenerationType::Tree);
 
     // Textmesh
 

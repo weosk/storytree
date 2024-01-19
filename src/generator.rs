@@ -18,6 +18,7 @@ type PrimitiveTransform = [f32; 16];
 
 pub enum GenerationType {
     Cone, 
+    Flat,
     Tree, 
 }
 
@@ -42,6 +43,8 @@ pub fn walk_path_to_mesh(entry_path: &str, generation_type: GenerationType ) -> 
         match generation_type {
             GenerationType::Cone => 
                 transform = next_cone_transform(cnt),
+            GenerationType::Flat => 
+                transform = next_flat_transform(cnt),
             GenerationType::Tree => 
                 transform = next_branch_transform(cnt, &entry),
     }
@@ -69,7 +72,6 @@ pub fn walk_path_to_mesh(entry_path: &str, generation_type: GenerationType ) -> 
     return (text_mesh, space_mesh)
 }
 
-// Needs arguments to collect information about where we have already been 
 fn next_cone_transform(cnt: f32) -> PrimitiveTransform {
     let mut rotation: Vec3 = Default::default();
     let mut translation: Vec3 = Default::default();
@@ -81,16 +83,52 @@ fn next_cone_transform(cnt: f32) -> PrimitiveTransform {
     generate_primitive_transfrom(rotation, translation)
 }
 
-// Needs arguments to collect information about where we have already been 
-fn next_branch_transform(cnt: f32, entry: &DirEntry) -> PrimitiveTransform {
+fn next_flat_transform(cnt: f32) -> PrimitiveTransform {
     let mut rotation: Vec3 = Default::default();
     let mut translation: Vec3 = Default::default();
     
-    // translation.y = cnt as f32 *0.2;
     translation.z = -5. -cnt as f32 *0.4;
     rotation.y =    cnt as f32;
 
     generate_primitive_transfrom(rotation, translation)
+}
+
+// Needs arguments to collect information about where we have already been 
+// example: /usr/include/libdbusmenu-glib-0.4
+fn next_branch_transform(cnt: f32, entry: &DirEntry) -> PrimitiveTransform {
+
+    let mut transform :Mat4 = Default::default();
+
+    // Split path at / into unique folder names
+    let words = entry.path().to_str().unwrap().split("/");
+
+    // Iterate over words and calculate a transform for each one
+    for (i, word) in words.enumerate() {
+        let mut rotation: Vec3 = Default::default();
+        let mut translation: Vec3 = Default::default();
+        // Initial Offsets
+        translation.y -= 5.;
+
+        // Adjusted by number of words
+        translation.z -= 6. * i as f32;
+
+        println!("{}: {}",i, word);
+
+        for (i, c) in word.chars().enumerate() {
+            // do something with character c and index i
+            print!("{}={}({})",i, c, c as i32);
+            rotation.y    += 1.;
+            translation.y += 3.;
+        }
+        println!("");
+
+        // Stack unique word transforms together for full path transform
+        transform *= Mat4::from_rotation_y(rotation.y) * Mat4::from_translation(translation);
+    }
+    println!("****************");
+
+    transform.to_cols_array() // creates PrimitiveTransform aka [f32,16]
+
 }
 
 fn extend_text_vec(vertices: &mut Vec<f32>, generator: &mut MeshGenerator<Face>, mut transform: [f32; 16], entry: &DirEntry) {
