@@ -191,7 +191,9 @@ fn setup(
     // Mesh Transmutation Experiment Spawning ///////////////////////////////////////////////////////
     let text_mesh;
     let space_mesh;
-    (text_mesh, space_mesh) = generator::walk_path_to_mesh("/etc/", generator::GenerationType::Tree);
+    let line_mesh: Mesh;
+    // (text_mesh, space_mesh) = generator::walk_path_to_mesh("/home/nom/z/cataclysmdda-0.I/", generator::GenerationType::Tree);
+    (text_mesh, space_mesh, line_mesh) = generator::walk_path_to_mesh("/home/nom/.steam/root", generator::GenerationType::Branch, true);
 
     // Textmesh
 
@@ -230,6 +232,20 @@ fn setup(
         // Spacemesh
         commands.spawn((PbrBundle {
             mesh: meshes.add(space_mesh),
+            material: materials.add(StandardMaterial {
+                // base_color_texture: Some(asset_server.load("lettersheetEdges.png")),
+                base_color_texture: Some(asset_server.load("branchorange.png")),
+                ..default()
+            }),
+            transform: Transform::from_scale(Vec3{x:scalef,y:scalef,z:scalef}),
+            ..default()
+            },
+            treemeshmarker,)
+            );
+
+        // Linemesh
+        commands.spawn((PbrBundle {
+            mesh: meshes.add(line_mesh),
             material: materials.add(StandardMaterial {
                 // base_color_texture: Some(asset_server.load("lettersheetEdges.png")),
                 base_color_texture: Some(asset_server.load("branchorange.png")),
@@ -310,7 +326,7 @@ fn setup(
         }.into(),
         ..default()
     },
-        Cam {yaw: 0., pitch: 0., fov: 1.0, speed:0.1, pos: Vec3::ZERO, rot: Quat::from_xyzw(0.0, 0.0, 0.0, 1.0)},
+        Cam {yaw: 0., pitch: 0., fov: 1.0, speed:1., pos: Vec3::ZERO, rot: Quat::from_xyzw(0.0, 0.0, 0.0, 1.0)},
     ));
 
     // new 3D orthographic camera
