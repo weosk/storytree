@@ -59,7 +59,7 @@ pub fn walk_path_to_mesh(entry_path: &str, generation_type: GenerationType, text
     generator.precache_glyphs(&common, true, None);
 
     let mut transform;
-    for entry in WalkDir::new(entry_path).into_iter().filter_map(|e| e.ok()) {
+    for entry in WalkDir::new(entry_path).min_depth(1).into_iter().filter_map(|e| e.ok()) {
         if entry.file_type().is_dir() {
             cnt += 1.;
             match generation_type {
@@ -144,35 +144,49 @@ fn next_branch_transform(cnt: f32, entry: &DirEntry) -> PrimitiveTransform {
     let mut translation: Vec3 = Default::default();
     let mut scale: Vec3 = Default::default();
 
-    // Iterate over words and calculate a transform for each one
+    let mut angle_cnt = 1;
+
+    // Iterate over words and calculate a transform for each one / word iterater == depth, angle given through string
+    // higher orders should bent the branch more downward while spreading the containg folders flower like or farn like
+    // -> these should be the differences that i compare and write about
+    // -> So a set of rules is needed depending und string handeling and depth?
+    // Spreading Cone Bushes, Farns
     for (i, word) in words.enumerate() {
 
         // Adjusted by number of words
-        translation.z -= 3. * i as f32;
+        translation.z -= 1. * i as f32;
+        translation.y += 3.;
 
         // Prints iteration value and word
         println!("{}: {}",i, word);
 
         // Enumerates over every char per word and sets the rotation accordingly
-        for (j, c) in word.chars().enumerate() {
+        // Individual Angle for every path depending on string characters
+        // Offset consisting of z and y adjustments (?)
 
+        // The rotational range should shrink with every step 360, 180, 90, 45
+        // Think the problem is with local and worldspace? 
+        for (j, c) in word.chars().enumerate() {
+            angle_cnt += 1;
             // Prints letter by letter with iteration number and ascii value
-            print!("{}={}({})",i, c, c as i32);
-            translation.y += 4.;
+            // print!("{}={}({})",i, c, c as i32);
+            translation.z -= 1.;
             // translation.z += 4.;
-            if i <= 1{                 
-                if j == 0 {
-                    rotation.y += get_angle(c) * 10.;    
-                }
-                else {
-                    rotation.y += get_angle(c) / 10_f32.powf(j as f32);
-                }
-            }  
-            else 
-            {
-                translation.z -= 1.;
-                rotation.y += get_angle(c) / 10_f32.powf((i+j) as f32);
-            }
+            // if i <= 1{                 
+            // if j == 0 {
+            rotation.y += get_angle(c) * 10.; // / (1. + ( i+j / angle_cnt) as f32);  
+
+            // translation.x = get_angle(c) - 17.5;
+
+            // }
+                // else {
+                    // rotation.y += get_angle(c) / 10_f32.powf(j as f32);
+                // }
+            // }  
+            // else {
+                // translation.z -= 1. * j as f32;
+                // rotation.y += get_angle(c) / 10_f32.powf((i+j) as f32);
+            // }
             
         }
 
@@ -180,17 +194,18 @@ fn next_branch_transform(cnt: f32, entry: &DirEntry) -> PrimitiveTransform {
         scale.x = 1.;// / i as f32;
         scale.y = 1.;// / i as f32;
         scale.z = 1.;// / i as f32;
-        // let base:f32 = 0.9;
+        let base:f32 = 0.99;
         // if i >= 7{                 
-        //     let scalf = base.powf(i as f32);//0.9 * i as f32;
-        //     scale.x = scalf;// / i as f32;
-        //     scale.y = scalf;// / i as f32;
-        //     scale.z = scalf;// / i as f32;
+            let scalf = base.powf(i as f32);//0.9 * i as f32;
+            scale.x = scalf;// / i as f32;
+            scale.y = scalf;// / i as f32;
+            scale.z = scalf;// / i as f32;
         // }
 
         // Stack unique word transforms together for full path transform
         transform *= Mat4::from_rotation_y(rotation.y) * Mat4::from_translation(translation) * Mat4::from_scale(scale);
     }
+    
     // creates PrimitiveTransform aka [f32,16] and returns it
     transform.to_cols_array() 
 }

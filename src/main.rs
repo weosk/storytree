@@ -192,8 +192,8 @@ fn setup(
     let text_mesh;
     let space_mesh;
     let line_mesh: Mesh;
-    // (text_mesh, space_mesh) = generator::walk_path_to_mesh("/home/nom/z/cataclysmdda-0.I/", generator::GenerationType::Tree);
-    (text_mesh, space_mesh, line_mesh) = generator::walk_path_to_mesh("/home/nom/.steam/root", generator::GenerationType::Branch, true);
+    (text_mesh, space_mesh, line_mesh) = generator::walk_path_to_mesh("/usr/", generator::GenerationType::Branch, false);
+    // (text_mesh, space_mesh, line_mesh) = generator::walk_path_to_mesh("./TestTree/Steps", generator::GenerationType::Branch, true);
 
     // Textmesh
 
@@ -326,7 +326,7 @@ fn setup(
         }.into(),
         ..default()
     },
-        Cam {yaw: 0., pitch: 0., fov: 1.0, speed:1., pos: Vec3::ZERO, rot: Quat::from_xyzw(0.0, 0.0, 0.0, 1.0)},
+        Cam {yaw: 0., pitch: 0., fov: 1.0, speed:0.2, pos: Vec3::ZERO, rot: Quat::from_xyzw(0.0, 0.0, 0.0, 1.0)},
     ));
 
     // new 3D orthographic camera
@@ -347,7 +347,6 @@ fn print_typename<T>(_: &T) {
     println!("{}", std::any::type_name::<T>())
 }
 
-
 fn animate_light_direction(
     time: Res<Time>,
     mut query: Query<&mut Transform, With<DirectionalLight>>,
@@ -359,7 +358,6 @@ fn animate_light_direction(
         //transform.rotate_y(time.delta_seconds() * 0.5);
     }
 }
-
 
 fn update_scale(
     keys: Res<Input<KeyCode>>,
