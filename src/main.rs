@@ -192,8 +192,8 @@ fn setup(
     let text_mesh;
     let space_mesh;
     let line_mesh: Mesh;
-    (text_mesh, space_mesh, line_mesh) = generator::walk_path_to_mesh("/usr/", generator::GenerationType::Branch, false);
-    // (text_mesh, space_mesh, line_mesh) = generator::walk_path_to_mesh("./TestTree/Steps", generator::GenerationType::Branch, true);
+    // (text_mesh, space_mesh, line_mesh) = generator::walk_path_to_mesh("/usr/", generator::GenerationType::Branch, false);
+    (text_mesh, space_mesh, line_mesh) = generator::walk_path_to_mesh("./TestTree/Steps", generator::GenerationType::Branch, true);
 
     // Textmesh
 

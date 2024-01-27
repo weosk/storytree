@@ -1,6 +1,6 @@
 
 use bevy::asset::io::memory::Data;
-use bevy::reflect::Enum;
+use bevy::reflect::{Enum, TypeData};
 use bevy::render::mesh::{self, PrimitiveTopology};
 use bevy::math::*;      // Affine3A
 use bevy::prelude::*;   
@@ -49,7 +49,8 @@ pub fn walk_path_to_mesh(entry_path: &str, generation_type: GenerationType, text
     let mut space_vertices: Vec<[f32; 3]> = vec![];
     let mut space_indices:  Vec<u32> = vec![];
     let mut line_vertices: Vec<Vec3> = vec![];
-    line_vertices.push(Vec3::default());
+    let mut line_list_vertices: Vec<Vec3> = vec![];
+    let mut line_strip_vertices: Vec<Vec3> = vec![];
 
     let font_data = include_bytes!("/home/nom/code/rust/storytree/assets/fonts/Roboto-Regular.ttf");
     let mut generator = MeshGenerator::new_with_quality(font_data, QualitySettings{quad_interpolation_steps:1,cubic_interpolation_steps:1});
@@ -59,7 +60,7 @@ pub fn walk_path_to_mesh(entry_path: &str, generation_type: GenerationType, text
     generator.precache_glyphs(&common, true, None);
 
     let mut transform;
-    for entry in WalkDir::new(entry_path).min_depth(1).into_iter().filter_map(|e| e.ok()) {
+    for entry in WalkDir::new(entry_path).sort_by(|a,b| a.file_name().cmp(b.file_name())).into_iter().filter_map(|e| e.ok()) {
         if entry.file_type().is_dir() {
             cnt += 1.;
             match generation_type {
@@ -77,11 +78,13 @@ pub fn walk_path_to_mesh(entry_path: &str, generation_type: GenerationType, text
                 extend_text_vec (&mut text_vertices, &mut generator, transform, &entry);
             }
             extend_space_vec(&mut space_vertices, &mut space_indices, transform, cnt);
-            
-            // lines currently only show transformation to transformation but should show relation to relation
-            line_vertices.push(Mat4::from_cols_array(&transform).transform_point3(Vec3::default()));
-            // line_vertices.push(Mat4::from_cols_array(&transform).transform_point3(line_vertices.last().unwrap().clone()));
-            // println!("LastLineVert: {}, {}, {}", line_vertices.last().unwrap().x, line_vertices.last().unwrap().y, line_vertices.last().unwrap().z);
+
+            // Calculates sets of lines
+            // LineList: Branches from (close to start) to far
+            // LineStrip: Order of transforms 
+            extend_line_list_vec(&mut line_list_vertices, &transform, cnt, &entry);
+            // Is still set to LIST while there is only one active at a time todo
+            // extend_line_strip_vec(&mut line_list_vertices, &transform, cnt, &entry);
         }
     }
 
@@ -103,7 +106,7 @@ pub fn walk_path_to_mesh(entry_path: &str, generation_type: GenerationType, text
     space_mesh.insert_attribute(Mesh::ATTRIBUTE_UV_0, space_uvs);
     space_mesh.insert_attribute(Mesh::ATTRIBUTE_NORMAL, space_vertices); // Normals are just the vertex positions as we go out from 0,0,0
 
-    line_mesh.insert_attribute(Mesh::ATTRIBUTE_POSITION, line_vertices);
+    line_mesh.insert_attribute(Mesh::ATTRIBUTE_POSITION, line_list_vertices);
 
     return (text_mesh, space_mesh, line_mesh)
 }
@@ -377,6 +380,57 @@ fn extend_space_vec(space_vertices: &mut Vec<[f32; 3]>, space_indices: &mut Vec<
             space_vertices.push(transformed_vector.into());
         }
 }
+
+fn extend_line_list_vec(line_vertices: &mut Vec<Vec3>, transform: &PrimitiveTransform, cnt: f32, entry: &DirEntry) {
+
+    let mut mat4_transform = Mat4::from_cols_array(transform);
+
+    if line_vertices.is_empty() {
+        line_vertices.push(Vec3::default());
+        line_vertices.push(mat4_transform.transform_point3(Vec3::default()));
+    }
+    else {
+        // Frist Point, fresh calculated from string that was delivered minus the last word, "finding parent"
+        // let mut parent_path: String;
+        // let words = entry.path().to_str().unwrap().split("/");
+        // words.count()-1;
+        // assert_eq!("cfg=foo=bar".rsplit_once('='), Some(("cfg=foo", "bar")));
+    
+        let partent_string = match entry.path().to_str().unwrap().rsplit_once("/") {
+            // The division was valid
+            // Some(cut_path) => partent_string = cut_path.0.to_string(),
+            // Some(cut_path) => println!("Parent_string: {:?}, Cutoff: {:?}", cut_path.0, cut_path.1),
+            Some(cut_path) => cut_path.0.to_string() ,
+
+            //println!("Parent Path String empty :(")
+            None    => "/".to_string(),
+        };
+
+        println!("Entry: {:?} Parentstring:  {:?}", entry.path().to_str().unwrap(), partent_string);
+
+        // Todo: This creation for every line is way to expensive: change next branch transform to just accept strings and adjust
+        // Also: Lines still go to siblings folders?
+
+        // Last != Parent, parent from string, last from recursive directory jumping
+        let parent_entry = WalkDir::new(partent_string).max_depth(1).into_iter();
+        for entry in parent_entry { 
+            let parent_transform = next_branch_transform(0., &entry.unwrap());
+            line_vertices.push(Mat4::from_cols_array(&parent_transform).transform_point3(Vec3::default()));
+            println!("<><><><><><><>><><><><><>");
+        }
+
+
+
+        // Second Point, out of given transform
+        line_vertices.push(mat4_transform.transform_point3(Vec3::default()))
+    }
+}
+
+    // use just this for linestrip in order of calls
+fn extend_line_strip_vec(line_vertices: &mut Vec<Vec3>, transform: &PrimitiveTransform, cnt: f32, entry: &DirEntry) {
+    line_vertices.push(Mat4::from_cols_array(&transform).transform_point3(Vec3::default()));
+}
+
 
 fn count_directories(path: &str) -> i32{
     let mut cnt = -1;
