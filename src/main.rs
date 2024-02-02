@@ -192,8 +192,13 @@ fn setup(
     let text_mesh;
     let space_mesh;
     let line_mesh: Mesh;
-    // (text_mesh, space_mesh, line_mesh) = generator::walk_path_to_mesh("/usr/", generator::GenerationType::Branch, false);
-    (text_mesh, space_mesh, line_mesh) = generator::walk_path_to_mesh("./TestTree/Steps", generator::GenerationType::Branch, true);
+
+    // (Todo:) No slash at the end of path string "/", lets the root branch go one sibling stock higher
+    // (text_mesh, space_mesh, line_mesh) = generator::walk_path_to_mesh("/", generator::GenerationType::Branch, false);
+    (text_mesh, space_mesh, line_mesh) = generator::walk_path_to_mesh("/sys", generator::GenerationType::Branch, true);
+    // (text_mesh, space_mesh, line_mesh) = generator::walk_path_to_mesh("/home/nom/z/cataclysmdda-0.I/data", generator::GenerationType::Branch, true);
+    // (text_mesh, space_mesh, line_mesh) = generator::walk_path_to_mesh("/run", generator::GenerationType::Branch, true);
+    // (text_mesh, space_mesh, line_mesh) = generator::walk_path_to_mesh("./TestTree/Steps", generator::GenerationType::Branch, true);
 
     // Textmesh
 
@@ -261,7 +266,7 @@ fn setup(
 
     // plane
     commands.spawn(PbrBundle {
-        mesh: meshes.add(shape::Plane::from_size(5.0).into()),
+        mesh: meshes.add(shape::Plane::from_size(50.0).into()),
         material: materials.add(Color::rgb(0.3, 0.5, 0.3).into()),
         ..default()
     });

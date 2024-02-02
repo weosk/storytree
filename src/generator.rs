@@ -9,7 +9,10 @@ use walkdir::{WalkDir, DirEntry};
 
 use meshtext::{MeshGenerator, MeshText, TextSection, QualitySettings, Face};
 use std::collections::LinkedList;
+use std::f32::consts::PI;
 use std::time::Instant;
+
+use std::ops::Range;
 
 type PrimitiveTransform = [f32; 16];
 // enum MeshType {
@@ -59,38 +62,36 @@ pub fn walk_path_to_mesh(entry_path: &str, generation_type: GenerationType, text
     generator.precache_glyphs(&common, false, None);
     generator.precache_glyphs(&common, true, None);
 
-    let mut transform;
-    for entry in WalkDir::new(entry_path).sort_by(|a,b| a.file_name().cmp(b.file_name())).into_iter().filter_map(|e| e.ok()) {
+    let mut transform: Mat4;
+    let mut parent_transform: Mat4; 
+    for entry in WalkDir::new(entry_path).max_depth(3).sort_by(|a,b| a.file_name().cmp(b.file_name())).into_iter().filter_map(|e| e.ok()) {
         if entry.file_type().is_dir() {
             cnt += 1.;
             match generation_type {
                 GenerationType::Cone => 
-                    transform = next_cone_transform(cnt),
+                    (transform, parent_transform) = (next_cone_transform(cnt), Mat4::default()),
                 GenerationType::Flat => 
-                    transform = next_flat_transform(cnt),
+                    (transform, parent_transform) = (next_flat_transform(cnt), Mat4::default()),
                 GenerationType::Branch => 
-                    transform = next_branch_transform(cnt, &entry),
+                    (transform, parent_transform) = (next_branch_transform(&entry.path().to_str().unwrap()), calc_parent_transform(&entry.path().to_str().unwrap())),
                 GenerationType::Tree => 
-                    transform = next_tree_transform(cnt, &entry),
-                
+                    (transform, parent_transform) = (next_tree_transform(cnt, &entry), Mat4::default())
             }
             if textflag == true {
-                extend_text_vec (&mut text_vertices, &mut generator, transform, &entry);
+                extend_text_vec (&mut text_vertices, &mut generator, &transform, &entry);
             }
-            extend_space_vec(&mut space_vertices, &mut space_indices, transform, cnt);
+            extend_space_vec(&mut space_vertices, &mut space_indices, &transform, cnt);
 
             // Calculates sets of lines
             // LineList: Branches from (close to start) to far
             // LineStrip: Order of transforms 
-            extend_line_list_vec(&mut line_list_vertices, &transform, cnt, &entry);
-            // Is still set to LIST while there is only one active at a time todo
-            // extend_line_strip_vec(&mut line_list_vertices, &transform, cnt, &entry);
+            extend_line_list_vec(&mut line_list_vertices, &transform, &parent_transform);
         }
     }
 
     let mut text_mesh : Mesh = Mesh::new(PrimitiveTopology::TriangleList);
     let mut space_mesh : Mesh = Mesh::new(PrimitiveTopology::TriangleList);
-    let mut line_mesh : Mesh = Mesh::new(PrimitiveTopology::LineStrip);
+    let mut line_mesh : Mesh = Mesh::new(PrimitiveTopology::LineList);
 
     let text_uvs =  vec![[0f32, 0f32]; text_vertices.len()];
     let space_uvs = vec![[0f32, 0f32]; space_vertices.len()];
@@ -111,7 +112,7 @@ pub fn walk_path_to_mesh(entry_path: &str, generation_type: GenerationType, text
     return (text_mesh, space_mesh, line_mesh)
 }
 
-fn next_cone_transform(cnt: f32) -> PrimitiveTransform {
+fn next_cone_transform(cnt: f32) -> Mat4 {
     let mut rotation: Vec3 = Default::default();
     let mut translation: Vec3 = Default::default();
     
@@ -119,167 +120,214 @@ fn next_cone_transform(cnt: f32) -> PrimitiveTransform {
     translation.z =-cnt as f32 *0.2;    
     rotation.y =    cnt as f32;
 
-    generate_primitive_transfrom(rotation, translation)
+    // This would be the "correct" way, but we would loose rotation relocalisation
+    // Mat4::from_rotation_translation(calc_quat_from_rot_vec(rotation), translation)
+    Mat4::from_rotation_y(rotation.y) * Mat4::from_translation(translation)
 }
 
-fn next_flat_transform(cnt: f32) -> PrimitiveTransform {
+fn next_flat_transform(cnt: f32) -> Mat4 {
     let mut rotation: Vec3 = Default::default();
     let mut translation: Vec3 = Default::default();
     
     translation.z = -5. -cnt as f32 *0.4;
     rotation.y =    cnt as f32;
 
-    generate_primitive_transfrom(rotation, translation)
+    // This would be the "correct" way, but we would loose rotation relocalisation
+    // Mat4::from_rotation_translation(calc_quat_from_rot_vec(rotation), translation)
+    Mat4::from_rotation_y(rotation.y) * Mat4::from_translation(translation)
+}
+
+fn calc_quat_from_rot_vec(rotation: Vec3) -> Quat {
+    Quat::from_rotation_x(rotation.x) * Quat::from_rotation_y(rotation.y) * Quat::from_rotation_z(rotation.z)
+}
+
+fn calc_parent_transform(path: &str) -> Mat4 {
+    let mut parent_string = match path.rsplit_once("/") {
+        Some(cut_path) => cut_path.0.to_string() ,
+        None    => "/".to_string(),
+    };
+
+    // println!("{:?}", parent_string);
+
+    next_branch_transform(&parent_string)
 }
 
 // Needs arguments to collect information about where we have already been 
 // example: /usr/include/libdbusmenu-glib-0.4
 // using the characters of the path string, simliar paths end up in the same direction (mostly)
-// Problem rigth now: We do a full turn after we adjusted for a direction
-fn next_branch_transform(cnt: f32, entry: &DirEntry) -> PrimitiveTransform {
+fn next_branch_transform(path: &str) -> Mat4 {
 
     let mut transform :Mat4 = Default::default();
 
     // Split path at / into unique folder names
-    let words = entry.path().to_str().unwrap().split("/");
+    let dirs = path.split("/");
 
     let mut rotation: Vec3 = Default::default();
     let mut translation: Vec3 = Default::default();
     let mut scale: Vec3 = Default::default();
 
-    let mut angle_cnt = 1;
+    if false {
+        // Iterate over dirs and calculate a transform for each one / word iterater == depth, angle given through string
+        // println!("{:?}", path);
+        for (i, dir) in dirs.enumerate() {
 
-    // Iterate over words and calculate a transform for each one / word iterater == depth, angle given through string
-    // higher orders should bent the branch more downward while spreading the containg folders flower like or farn like
-    // -> these should be the differences that i compare and write about
-    // -> So a set of rules is needed depending und string handeling and depth?
-    // Spreading Cone Bushes, Farns
-    for (i, word) in words.enumerate() {
+            if !dir.is_empty(){
+                translation.z = 1.;
+                translation.y += 4.;
 
-        // Adjusted by number of words
-        translation.z -= 1. * i as f32;
-        translation.y += 3.;
+                // Prints iteration value and word
+                // println!("{}: {}",i, dir);
 
-        // Prints iteration value and word
-        println!("{}: {}",i, word);
+                // Enumerates over every char per word and sets the rotation accordingly
+                for (j, c) in dir.chars().enumerate() {
+                    // Prints letter by letter with iteration number and ascii value
+                    // print!("{}={}({})",i, c, c as i32);
+                    translation.z -= 2.;//translation_mod.z;
 
-        // Enumerates over every char per word and sets the rotation accordingly
-        // Individual Angle for every path depending on string characters
-        // Offset consisting of z and y adjustments (?)
+                    rotation.y += get_angle(rotation.y, c, j, i);
+                    translation.y += 1.; // Every letter leads to slightly higher position
+                }
+            }      
 
-        // The rotational range should shrink with every step 360, 180, 90, 45
-        // Think the problem is with local and worldspace? 
-        for (j, c) in word.chars().enumerate() {
-            angle_cnt += 1;
-            // Prints letter by letter with iteration number and ascii value
-            // print!("{}={}({})",i, c, c as i32);
-            translation.z -= 1.;
-            // translation.z += 4.;
-            // if i <= 1{                 
-            // if j == 0 {
-            rotation.y += get_angle(c) * 10.; // / (1. + ( i+j / angle_cnt) as f32);  
+            // Scale experimentation
+            scale.x = 1.;// / i as f32;
+            scale.y = 1.;// / i as f32;
+            scale.z = 1.;// / i as f32;
+            let base:f32 = 0.85;
+            if i >= 4{                 
+                let scalf = base.powf(i as f32);//0.9 * i as f32;
+                scale.x = scalf;// / i as f32;
+                scale.y = scalf;// / i as f32;
+                scale.z = scalf;// / i as f32;
+            }
+            rotation.x -= 0.05;
 
-            // translation.x = get_angle(c) - 17.5;
-
-            // }
-                // else {
-                    // rotation.y += get_angle(c) / 10_f32.powf(j as f32);
-                // }
-            // }  
-            // else {
-                // translation.z -= 1. * j as f32;
-                // rotation.y += get_angle(c) / 10_f32.powf((i+j) as f32);
-            // }
-            
+            // Stack unique word transforms together for full path transform // Normal Way would be L = T * R * S  -> Order is S then R then T, but we use angletravel
+            transform *= Mat4::from_rotation_y(rotation.y) * Mat4::from_rotation_x(rotation.x)  *  Mat4::from_translation(translation) * Mat4::from_scale(scale);
         }
-
-        // Scale experimentation
-        scale.x = 1.;// / i as f32;
-        scale.y = 1.;// / i as f32;
-        scale.z = 1.;// / i as f32;
-        let base:f32 = 0.99;
-        // if i >= 7{                 
-            let scalf = base.powf(i as f32);//0.9 * i as f32;
-            scale.x = scalf;// / i as f32;
-            scale.y = scalf;// / i as f32;
-            scale.z = scalf;// / i as f32;
-        // }
-
-        // Stack unique word transforms together for full path transform
-        transform *= Mat4::from_rotation_y(rotation.y) * Mat4::from_translation(translation) * Mat4::from_scale(scale);
     }
-    
-    // creates PrimitiveTransform aka [f32,16] and returns it
-    transform.to_cols_array() 
+    else { // more space for experimentation
+        for (i, dir) in dirs.enumerate() {
+            if !dir.is_empty(){
+                for (j, c) in dir.chars().enumerate() {
+                    // translation.x += c as i32 as f32/20.;
+                    translation.y += j as f32 *20.;
+                    translation.z -= 1000. / (2*i+1) as f32;//c as i32 as f32/10.;
+                    rotation.y += get_angle(rotation.y, c,j ,i);
+                    // if (j < 3){
+                        // rotation.x += 0.01 * j as f32;
+                    // }
+                }
+            }      
+
+            // Scale experimentation
+            scale.x = 3.;// / i as f32;
+            scale.y = 3.;// / i as f32;
+            scale.z = 3.;// / i as f32;
+            let base:f32 = 0.9;
+            // if i >= 4{                 
+            let scalf = base.powf(i as f32);//0.9 * i as f32;
+            scale.x *= scalf;// / i as f32;
+            scale.y *= scalf;// / i as f32;
+            scale.z *= scalf;// / i as f32;
+            // }
+            // rotation.x -= 0.05;
+
+            // Stack unique word transforms together for full path transform // Normal Way would be L = T * R * S  -> Order is S then R then T, but we use angletravel
+            transform *= Mat4::from_rotation_x(rotation.x) * Mat4::from_rotation_y(rotation.y) * Mat4::from_translation(translation)  * Mat4::from_scale(scale);
+            // transform *= Mat4::from_translation(translation) * Mat4::from_scale(scale);
+        }
+    }
+
+    transform
 }
 
 // Take lessons from branching and create nested nests
-fn next_tree_transform(cnt: f32, entry: &DirEntry) -> PrimitiveTransform{
+fn next_tree_transform(cnt: f32, entry: &DirEntry) -> Mat4{
     let mut transform :Mat4 = Default::default();
-    transform.to_cols_array()
+    transform
 }
 
-fn get_angle(c: char) -> f32
+// Include Range, governed by count directories, split to 360 / numDirs - Adjusted by alphanumeric value in new range
+fn get_angle(mut current_angle: f32, c: char, char_num: usize, word_num: usize) -> f32
 {
+    // Map char to char range as integer, map that integer to angle_range
+    // 1. 0..2PI
+    // 2. 2PI/NumDirectories == > New allowed angle? +- angle_range? 
+
     let mut angle: f32 = 0.;
+    let min_angle: f32 = 0.1745329252;// (2 * PI) / 36
+
+    let mut map_pos = 36;
     match c {
-        'a' | 'A' => angle =  1.,
-        'b' | 'B' => angle =  2.,
-        'c' | 'C' => angle =  3.,
-        'd' | 'D' => angle =  4.,
-        'e' | 'E' => angle =  5.,
-        'f' | 'F' => angle =  6.,
-        'g' | 'G' => angle =  7.,
-        'h' | 'H' => angle =  8.,
-        'i' | 'I' => angle =  9.,
-        'j' | 'J' => angle = 10.,
-        'k' | 'K' => angle = 11.,
-        'l' | 'L' => angle = 12.,
-        'm' | 'M' => angle = 13.,
-        'n' | 'N' => angle = 14.,
-        'o' | 'O' => angle = 15.,
-        'p' | 'P' => angle = 16.,
-        'q' | 'Q' => angle = 17.,
-        'r' | 'R' => angle = 18.,
-        's' | 'S' => angle = 19.,
-        't' | 'T' => angle = 20.,
-        'u' | 'U' => angle = 21.,
-        'v' | 'V' => angle = 22.,
-        'x' | 'X' => angle = 23.,
-        'y' | 'Y' => angle = 24.,
-        'z' | 'Z' => angle = 25.,
-        '0'       => angle = 26.,
-        '1'       => angle = 27.,
-        '2'       => angle = 28.,
-        '3'       => angle = 29.,
-        '4'       => angle = 30.,
-        '5'       => angle = 31.,
-        '6'       => angle = 32.,
-        '7'       => angle = 33.,
-        '8'       => angle = 34.,
-        '9'       => angle = 35.,
-        _ => angle = 0.,
+        'a' | 'A' => map_pos =  1,
+        'b' | 'B' => map_pos =  2,
+        'c' | 'C' => map_pos =  3,
+        'd' | 'D' => map_pos =  4,
+        'e' | 'E' => map_pos =  5,
+        'f' | 'F' => map_pos =  6,
+        'g' | 'G' => map_pos =  7,
+        'h' | 'H' => map_pos =  8,
+        'i' | 'I' => map_pos =  9,
+        'j' | 'J' => map_pos = 10,
+        'k' | 'K' => map_pos = 11,
+        'l' | 'L' => map_pos = 12,
+        'm' | 'M' => map_pos = 13,
+        'n' | 'N' => map_pos = 14,
+        'o' | 'O' => map_pos = 15,
+        'p' | 'P' => map_pos = 16,
+        'q' | 'Q' => map_pos = 17,
+        'r' | 'R' => map_pos = 18,
+        's' | 'S' => map_pos = 19,
+        't' | 'T' => map_pos = 20,
+        'u' | 'U' => map_pos = 21,
+        'v' | 'V' => map_pos = 22,
+        'x' | 'X' => map_pos = 23,
+        'y' | 'Y' => map_pos = 24,
+        'z' | 'Z' => map_pos = 25,
+        '0'       => map_pos = 26,
+        '1'       => map_pos = 27,
+        '2'       => map_pos = 28,
+        '3'       => map_pos = 29,
+        '4'       => map_pos = 30,
+        '5'       => map_pos = 31,
+        '6'       => map_pos = 32,
+        '7'       => map_pos = 33,
+        '8'       => map_pos = 34,
+        '9'       => map_pos = 35,
+        _         => map_pos = 36,
     } 
 
+    // if word_num <= 2 { //first word, initial angle
+    //    angle = map_pos as f32 * min_angle;
+    // }
+    // else { 
+    //     current_angle = current_angle - min_angle / 2.;
+    //     current_angle += min_angle / map_pos as f32;
+    //     angle = current_angle;
+    // }
+
+    angle = map_pos as f32 * min_angle;
+    angle = angle.powf((word_num*char_num )as f32);
     angle
+
 }
 
 // Generates the 3D text and offsets it to be readable 
-fn extend_text_vec(vertices: &mut Vec<f32>, generator: &mut MeshGenerator<Face>, mut transform: [f32; 16], entry: &DirEntry) {
+fn extend_text_vec(vertices: &mut Vec<f32>, generator: &mut MeshGenerator<Face>, transform: &Mat4, entry: &DirEntry) {
+
     // Adjust position, relative to dodeca
-    // transform[12] -= 1.; // x
-    transform[13] += 1.7; // y
-    // transform[14] += 2.; // z
+    let transform = transform.clone() * Mat4::from_translation(Vec3 { x: 0., y: 1.7, z: 0. });
 
     let text_mesh: MeshText = generator
-        .generate_section(entry.path().to_str().unwrap(), true, Some(&transform))
+        .generate_section(entry.path().to_str().unwrap(), true, Some(&transform.to_cols_array()))
         .unwrap();
 
     vertices.extend(text_mesh.vertices);
 }
 
 // Creates the dodecas
-fn extend_space_vec(space_vertices: &mut Vec<[f32; 3]>, space_indices: &mut Vec<u32>, transform: PrimitiveTransform, cnt: f32){
+fn extend_space_vec(space_vertices: &mut Vec<[f32; 3]>, space_indices: &mut Vec<u32>, transform: &Mat4, cnt: f32){
     let PHI: f32 = 1.618033989; 
     let ground_vertices: [[f32; 3]; 20] =   
     [   [  0.,      -1./PHI,  -PHI ], // 0
@@ -364,10 +412,10 @@ fn extend_space_vec(space_vertices: &mut Vec<[f32; 3]>, space_indices: &mut Vec<
     ]); 
 
         // Convert the transformation matrix to Mat4
-        let transform_matrix = Mat4::from_cols_array(&transform);
+        // let transform_matrix = Mat4::from_cols_array(&transform);
 
         // Create a Bevy Transform component
-        let transform = Transform::from_matrix(transform_matrix);
+        let transform = Transform::from_matrix(transform.clone());
     
         for each in ground_vertices {
             // Convert each input vector to Vec3
@@ -381,52 +429,26 @@ fn extend_space_vec(space_vertices: &mut Vec<[f32; 3]>, space_indices: &mut Vec<
         }
 }
 
-fn extend_line_list_vec(line_vertices: &mut Vec<Vec3>, transform: &PrimitiveTransform, cnt: f32, entry: &DirEntry) {
-
-    let mut mat4_transform = Mat4::from_cols_array(transform);
-
+fn extend_line_list_vec(line_vertices: &mut Vec<Vec3>, transform: &Mat4, parent_transform: &Mat4) {
+   
     if line_vertices.is_empty() {
+        // First Point, Origin (0,0,0)
         line_vertices.push(Vec3::default());
-        line_vertices.push(mat4_transform.transform_point3(Vec3::default()));
+
+        // Second Point, from path
+        line_vertices.push(transform.transform_point3(Vec3::default()));
     }
     else {
         // Frist Point, fresh calculated from string that was delivered minus the last word, "finding parent"
-        // let mut parent_path: String;
-        // let words = entry.path().to_str().unwrap().split("/");
-        // words.count()-1;
-        // assert_eq!("cfg=foo=bar".rsplit_once('='), Some(("cfg=foo", "bar")));
-    
-        let partent_string = match entry.path().to_str().unwrap().rsplit_once("/") {
-            // The division was valid
-            // Some(cut_path) => partent_string = cut_path.0.to_string(),
-            // Some(cut_path) => println!("Parent_string: {:?}, Cutoff: {:?}", cut_path.0, cut_path.1),
-            Some(cut_path) => cut_path.0.to_string() ,
-
-            //println!("Parent Path String empty :(")
-            None    => "/".to_string(),
-        };
-
-        println!("Entry: {:?} Parentstring:  {:?}", entry.path().to_str().unwrap(), partent_string);
-
-        // Todo: This creation for every line is way to expensive: change next branch transform to just accept strings and adjust
-        // Also: Lines still go to siblings folders?
-
-        // Last != Parent, parent from string, last from recursive directory jumping
-        let parent_entry = WalkDir::new(partent_string).max_depth(1).into_iter();
-        for entry in parent_entry { 
-            let parent_transform = next_branch_transform(0., &entry.unwrap());
-            line_vertices.push(Mat4::from_cols_array(&parent_transform).transform_point3(Vec3::default()));
-            println!("<><><><><><><>><><><><><>");
-        }
-
-
+        line_vertices.push(parent_transform.transform_point3(Vec3::default()));
+        println!("<><><><><><><>><><><><><>");
 
         // Second Point, out of given transform
-        line_vertices.push(mat4_transform.transform_point3(Vec3::default()))
+        line_vertices.push(transform.transform_point3(Vec3::default()))
     }
 }
 
-    // use just this for linestrip in order of calls
+    // use just this for linestrip in order of calls, 
 fn extend_line_strip_vec(line_vertices: &mut Vec<Vec3>, transform: &PrimitiveTransform, cnt: f32, entry: &DirEntry) {
     line_vertices.push(Mat4::from_cols_array(&transform).transform_point3(Vec3::default()));
 }
