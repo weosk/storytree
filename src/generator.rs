@@ -45,7 +45,7 @@ pub enum GenerationType {
 //     }
 // }
 
-pub fn walk_path_to_mesh(entry_path: &str, generation_type: GenerationType, textflag: bool) -> (Mesh, Mesh, Mesh) 
+pub fn walk_path_to_mesh(entry_path: &str, generation_type: GenerationType, depth: usize, textflag: bool, dodecaflag: bool) -> (Mesh, Mesh, Mesh) 
 {   
     let mut cnt: f32 = 0.;
     let mut text_vertices:  Vec<f32> = vec![];
@@ -64,7 +64,7 @@ pub fn walk_path_to_mesh(entry_path: &str, generation_type: GenerationType, text
 
     let mut transform: Mat4;
     let mut parent_transform: Mat4; 
-    for entry in WalkDir::new(entry_path).max_depth(3).sort_by(|a,b| a.file_name().cmp(b.file_name())).into_iter().filter_map(|e| e.ok()) {
+    for entry in WalkDir::new(entry_path).max_depth(depth).sort_by(|a,b| a.file_name().cmp(b.file_name())).into_iter().filter_map(|e| e.ok()) {
         if entry.file_type().is_dir() {
             cnt += 1.;
             match generation_type {
@@ -80,7 +80,9 @@ pub fn walk_path_to_mesh(entry_path: &str, generation_type: GenerationType, text
             if textflag == true {
                 extend_text_vec (&mut text_vertices, &mut generator, &transform, &entry);
             }
-            extend_space_vec(&mut space_vertices, &mut space_indices, &transform, cnt);
+            if dodecaflag == true {
+                extend_space_vec(&mut space_vertices, &mut space_indices, &transform, cnt);
+            }
 
             // Calculates sets of lines
             // LineList: Branches from (close to start) to far
@@ -184,7 +186,7 @@ fn next_branch_transform(path: &str) -> Mat4 {
                     // print!("{}={}({})",i, c, c as i32);
                     translation.z -= 2.;//translation_mod.z;
 
-                    rotation.y += get_angle(rotation.y, c, j, i);
+                    rotation.y = get_angle(rotation.y, c, i, j);
                     translation.y += 1.; // Every letter leads to slightly higher position
                 }
             }      
@@ -193,7 +195,7 @@ fn next_branch_transform(path: &str) -> Mat4 {
             scale.x = 1.;// / i as f32;
             scale.y = 1.;// / i as f32;
             scale.z = 1.;// / i as f32;
-            let base:f32 = 0.85;
+            let base:f32 = 0.7;
             if i >= 4{                 
                 let scalf = base.powf(i as f32);//0.9 * i as f32;
                 scale.x = scalf;// / i as f32;
@@ -207,23 +209,31 @@ fn next_branch_transform(path: &str) -> Mat4 {
         }
     }
     else { // more space for experimentation
+
+        // Todo: Get them branches to spread out wide first, then decrease their spread so they stay over their local parent folders
+        // > z high, then exponentially lower should do the trick? Rotation might need fixing. 
+
+        let cnt_dirs = dirs.clone().count();
+
         for (i, dir) in dirs.enumerate() {
             if !dir.is_empty(){
                 for (j, c) in dir.chars().enumerate() {
                     // translation.x += c as i32 as f32/20.;
-                    translation.y += j as f32 *20.;
-                    translation.z -= 1000. / (2*i+1) as f32;//c as i32 as f32/10.;
-                    rotation.y += get_angle(rotation.y, c,j ,i);
-                    // if (j < 3){
-                        // rotation.x += 0.01 * j as f32;
-                    // }
-                }
-            }      
 
+                    // Bring only last part up
+    
+                    translation.y += c as i32 as f32 / 20.;
+                    translation.z -= (i+j) as f32 * 0.9;//c as i32 as f32 / 20.;//1000. / (2*i+1) as f32;//c as i32 as f32/10.;
+                    rotation.y = get_angle(rotation.y, c, i, j);       
+                    // translation.x += 1. * (i * j) as f32; 
+                    
+                }
+            }
+        
             // Scale experimentation
-            scale.x = 3.;// / i as f32;
-            scale.y = 3.;// / i as f32;
-            scale.z = 3.;// / i as f32;
+            scale.x = 1.;// / i as f32;
+            scale.y = 1.;// / i as f32;
+            scale.z = 1.;// / i as f32;
             let base:f32 = 0.9;
             // if i >= 4{                 
             let scalf = base.powf(i as f32);//0.9 * i as f32;
@@ -234,7 +244,7 @@ fn next_branch_transform(path: &str) -> Mat4 {
             // rotation.x -= 0.05;
 
             // Stack unique word transforms together for full path transform // Normal Way would be L = T * R * S  -> Order is S then R then T, but we use angletravel
-            transform *= Mat4::from_rotation_x(rotation.x) * Mat4::from_rotation_y(rotation.y) * Mat4::from_translation(translation)  * Mat4::from_scale(scale);
+            transform *= /*Mat4::from_rotation_x(rotation.x) */ Mat4::from_rotation_y(rotation.y) * Mat4::from_translation(translation)  * Mat4::from_scale(scale);
             // transform *= Mat4::from_translation(translation) * Mat4::from_scale(scale);
         }
     }
@@ -249,7 +259,7 @@ fn next_tree_transform(cnt: f32, entry: &DirEntry) -> Mat4{
 }
 
 // Include Range, governed by count directories, split to 360 / numDirs - Adjusted by alphanumeric value in new range
-fn get_angle(mut current_angle: f32, c: char, char_num: usize, word_num: usize) -> f32
+fn get_angle(mut current_angle: f32, c: char, word_num: usize, char_num: usize) -> f32
 {
     // Map char to char range as integer, map that integer to angle_range
     // 1. 0..2PI
@@ -258,45 +268,49 @@ fn get_angle(mut current_angle: f32, c: char, char_num: usize, word_num: usize) 
     let mut angle: f32 = 0.;
     let min_angle: f32 = 0.1745329252;// (2 * PI) / 36
 
-    let mut map_pos = 36;
+    let mut map_pos: i32 = 0;
+
+
     match c {
-        'a' | 'A' => map_pos =  1,
-        'b' | 'B' => map_pos =  2,
-        'c' | 'C' => map_pos =  3,
-        'd' | 'D' => map_pos =  4,
-        'e' | 'E' => map_pos =  5,
-        'f' | 'F' => map_pos =  6,
-        'g' | 'G' => map_pos =  7,
-        'h' | 'H' => map_pos =  8,
-        'i' | 'I' => map_pos =  9,
-        'j' | 'J' => map_pos = 10,
-        'k' | 'K' => map_pos = 11,
-        'l' | 'L' => map_pos = 12,
-        'm' | 'M' => map_pos = 13,
-        'n' | 'N' => map_pos = 14,
-        'o' | 'O' => map_pos = 15,
-        'p' | 'P' => map_pos = 16,
-        'q' | 'Q' => map_pos = 17,
-        'r' | 'R' => map_pos = 18,
-        's' | 'S' => map_pos = 19,
-        't' | 'T' => map_pos = 20,
-        'u' | 'U' => map_pos = 21,
-        'v' | 'V' => map_pos = 22,
-        'x' | 'X' => map_pos = 23,
-        'y' | 'Y' => map_pos = 24,
-        'z' | 'Z' => map_pos = 25,
-        '0'       => map_pos = 26,
-        '1'       => map_pos = 27,
-        '2'       => map_pos = 28,
-        '3'       => map_pos = 29,
-        '4'       => map_pos = 30,
-        '5'       => map_pos = 31,
-        '6'       => map_pos = 32,
-        '7'       => map_pos = 33,
-        '8'       => map_pos = 34,
-        '9'       => map_pos = 35,
-        _         => map_pos = 36,
+        'a' | 'A' => map_pos = -17,
+        'b' | 'B' => map_pos = -16,
+        'c' | 'C' => map_pos = -15,
+        'd' | 'D' => map_pos = -14,
+        'e' | 'E' => map_pos = -13,
+        'f' | 'F' => map_pos = -12,
+        'g' | 'G' => map_pos = -11,
+        'h' | 'H' => map_pos = -10,
+        'i' | 'I' => map_pos = -9,
+        'j' | 'J' => map_pos = -8,
+        'k' | 'K' => map_pos = -7,
+        'l' | 'L' => map_pos = -6,
+        'm' | 'M' => map_pos = -5,
+        'n' | 'N' => map_pos = -4,
+        'o' | 'O' => map_pos = -3,
+        'p' | 'P' => map_pos = -2,
+        'q' | 'Q' => map_pos = -1,
+        'r' | 'R' => map_pos =  0,
+        's' | 'S' => map_pos =  1,
+        't' | 'T' => map_pos =  2,
+        'u' | 'U' => map_pos =  3,
+        'v' | 'V' => map_pos =  4,
+        'x' | 'X' => map_pos =  5,
+        'y' | 'Y' => map_pos =  6,
+        'z' | 'Z' => map_pos =  7,
+        '0'       => map_pos =  8,
+        '1'       => map_pos =  9,
+        '2'       => map_pos =  10,
+        '3'       => map_pos =  11,
+        '4'       => map_pos =  12,
+        '5'       => map_pos =  13,
+        '6'       => map_pos =  14,
+        '7'       => map_pos =  15,
+        '8'       => map_pos =  16,
+        '9'       => map_pos =  17,
+        _         => map_pos = 40 - c as i32,
     } 
+
+    if word_num <= 1{
 
     // if word_num <= 2 { //first word, initial angle
     //    angle = map_pos as f32 * min_angle;
@@ -307,9 +321,14 @@ fn get_angle(mut current_angle: f32, c: char, char_num: usize, word_num: usize) 
     //     angle = current_angle;
     // }
 
-    angle = map_pos as f32 * min_angle;
-    angle = angle.powf((word_num*char_num )as f32);
-    angle
+        current_angle += map_pos as f32 * min_angle; /// (10. * (char_num+1) as f32);
+        // angle += angle.powf((word_num*char_num )as f32);
+        current_angle
+    }
+    else {
+        current_angle = (map_pos as f32 * min_angle) * 0.05; /// (10. * (word_num + char_num) as f32);
+        current_angle
+    }      
 
 }
 
@@ -317,7 +336,7 @@ fn get_angle(mut current_angle: f32, c: char, char_num: usize, word_num: usize) 
 fn extend_text_vec(vertices: &mut Vec<f32>, generator: &mut MeshGenerator<Face>, transform: &Mat4, entry: &DirEntry) {
 
     // Adjust position, relative to dodeca
-    let transform = transform.clone() * Mat4::from_translation(Vec3 { x: 0., y: 1.7, z: 0. });
+    let transform = transform.clone() * Mat4::from_translation(Vec3 { x: 0.0, y: 0., z: 0. });
 
     let text_mesh: MeshText = generator
         .generate_section(entry.path().to_str().unwrap(), true, Some(&transform.to_cols_array()))

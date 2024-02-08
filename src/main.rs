@@ -3,10 +3,10 @@
 use std::{env, fs, iter::Map};
 
 use bevy::{
-    math::*,
+    input::mouse::{MouseButtonInput, MouseMotion, MouseWheel}, 
+    math::*, pbr::wireframe::WireframeConfig, 
     prelude::*, 
-    render::mesh::{self, PrimitiveTopology, Indices},
-    input::mouse::{MouseButtonInput, MouseMotion, MouseWheel}, pbr::wireframe::WireframeConfig,
+    render::{camera::ScalingMode, mesh::{self, Indices, PrimitiveTopology}}
 };
 
 use walkdir::WalkDir;
@@ -194,11 +194,11 @@ fn setup(
     let line_mesh: Mesh;
 
     // (Todo:) No slash at the end of path string "/", lets the root branch go one sibling stock higher
-    // (text_mesh, space_mesh, line_mesh) = generator::walk_path_to_mesh("/", generator::GenerationType::Branch, false);
-    (text_mesh, space_mesh, line_mesh) = generator::walk_path_to_mesh("/sys", generator::GenerationType::Branch, true);
-    // (text_mesh, space_mesh, line_mesh) = generator::walk_path_to_mesh("/home/nom/z/cataclysmdda-0.I/data", generator::GenerationType::Branch, true);
-    // (text_mesh, space_mesh, line_mesh) = generator::walk_path_to_mesh("/run", generator::GenerationType::Branch, true);
-    // (text_mesh, space_mesh, line_mesh) = generator::walk_path_to_mesh("./TestTree/Steps", generator::GenerationType::Branch, true);
+    (text_mesh, space_mesh, line_mesh) = generator::walk_path_to_mesh("/", generator::GenerationType::Branch, 20, false, true);
+    // (text_mesh, space_mesh, line_mesh) = generator::walk_path_to_mesh("/sys/module", generator::GenerationType::Branch, true);
+    // (text_mesh, space_mesh, line_mesh) = generator::walk_path_to_mesh("/home/nom/z/cataclysmdda-0.I/data", generator::GenerationType::Branch, true, true);
+    // (text_mesh, space_mesh, line_mesh) = generator::walk_path_to_mesh("/run", generator::GenerationType::Branch, true, true);
+    // (text_mesh, space_mesh, line_mesh) = generator::walk_path_to_mesh("./TestTree/Steps", generator::GenerationType::Branch, true, true);
 
     // Textmesh
 
@@ -251,11 +251,12 @@ fn setup(
         // Linemesh
         commands.spawn((PbrBundle {
             mesh: meshes.add(line_mesh),
-            material: materials.add(StandardMaterial {
-                // base_color_texture: Some(asset_server.load("lettersheetEdges.png")),
-                base_color_texture: Some(asset_server.load("branchorange.png")),
-                ..default()
-            }),
+            // material: materials.add(StandardMaterial {
+            //     // base_color_texture: Some(asset_server.load("lettersheetEdges.png")),
+            //     base_color_texture: Some(asset_server.load("branchorange.png")),
+            //     ..default()
+            // }),
+            material: materials.add(Color::rgba(1., 1.0, 0., 0.09).into()),
             transform: Transform::from_scale(Vec3{x:scalef,y:scalef,z:scalef}),
             ..default()
             },
@@ -321,7 +322,7 @@ fn setup(
     let z = 2.0;
     let w = 1.0;
 
-    // camera
+    // Working classic cam
     commands.spawn((Camera3dBundle {
         transform: Transform::from_xyz(0., 10., 40.0).looking_at(Vec3::ZERO, Vec3::Y),
         projection: PerspectiveProjection {
@@ -335,14 +336,16 @@ fn setup(
     ));
 
     // new 3D orthographic camera
-    // commands.spawn_bundle(Camera3dBundle {
+    // commands.spawn((Camera3dBundle {
     //     projection: OrthographicProjection {
-    //         scale: 3.0,
+    //         scale: 0.1,
     //         scaling_mode: ScalingMode::FixedVertical(5.0),
     //         ..default()
     //     }.into(),
     //     ..default()
-    // })
+    // },
+    //         Cam {yaw: 0., pitch: 0., fov: 1.0, speed:0.2, pos: Vec3::ZERO, rot: Quat::from_xyzw(0.0, 0.0, 0.0, 1.0)},
+    // ));
     
 }
 
