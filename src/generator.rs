@@ -168,6 +168,7 @@ fn next_branch_transform(path: &str) -> Mat4 {
     let mut translation: Vec3 = Default::default();
     let mut scale: Vec3 = Default::default();
 
+    // 1.
     if false {
         // Iterate over dirs and calculate a transform for each one / word iterater == depth, angle given through string
         // println!("{:?}", path);
@@ -195,7 +196,7 @@ fn next_branch_transform(path: &str) -> Mat4 {
             scale.x = 1.;// / i as f32;
             scale.y = 1.;// / i as f32;
             scale.z = 1.;// / i as f32;
-            let base:f32 = 0.7;
+            let base:f32 = 0.9;
             if i >= 4{                 
                 let scalf = base.powf(i as f32);//0.9 * i as f32;
                 scale.x = scalf;// / i as f32;
@@ -208,49 +209,90 @@ fn next_branch_transform(path: &str) -> Mat4 {
             transform *= Mat4::from_rotation_y(rotation.y) * Mat4::from_rotation_x(rotation.x)  *  Mat4::from_translation(translation) * Mat4::from_scale(scale);
         }
     }
-    else { // more space for experimentation
-
+    // 2. Treetrunk
+    else if true{ // more space for experimentation
         // Todo: Get them branches to spread out wide first, then decrease their spread so they stay over their local parent folders
         // > z high, then exponentially lower should do the trick? Rotation might need fixing. 
-
         let cnt_dirs = dirs.clone().count();
 
         for (i, dir) in dirs.enumerate() {
             if !dir.is_empty(){
                 for (j, c) in dir.chars().enumerate() {
-                    // translation.x += c as i32 as f32/20.;
-
-                    // Bring only last part up
-    
-                    translation.y += c as i32 as f32 / 20.;
-                    translation.z -= (i+j) as f32 * 0.9;//c as i32 as f32 / 20.;//1000. / (2*i+1) as f32;//c as i32 as f32/10.;
-                    rotation.y = get_angle(rotation.y, c, i, j);       
-                    // translation.x += 1. * (i * j) as f32; 
-                    
+                    if i <= 1 {
+                        translation.y += c as i32 as f32 * 1.5 - 150.;
+                        rotation.y = get_angle(rotation.y, c, i, j);           
+                    }    
+                    else if i <= 5 {
+                        // translation.y += c as i32 as f32 / 20.;
+                        translation.y = 0.;
+                        translation.z -= (j*2) as f32;//c as i32 as f32 / 20.;//1000. / (2*i+1) as f32;//c as i32 as f32/10.;
+                        rotation.y = get_angle(rotation.y, c, i, j);           
+                        rotation.x += 0.002;
+                    }
+                    else 
+                    {
+                        translation.y = 0.;
+                        translation.z -= (j*2) as f32;//c as i32 as f32 / 20.;//1000. / (2*i+1) as f32;//c as i32 as f32/10.;
+                        rotation.y = get_angle(rotation.y, c, i, j);           
+                        rotation.x -= 0.002;
+                    }
                 }
             }
-        
             // Scale experimentation
-            scale.x = 1.;// / i as f32;
-            scale.y = 1.;// / i as f32;
-            scale.z = 1.;// / i as f32;
-            let base:f32 = 0.9;
+            scale.x = 0.8;// / i as f32;
+            scale.y = 0.8;// / i as f32;
+            scale.z = 0.8;// / i as f32;
+            let base:f32 = 0.95;
             // if i >= 4{                 
             let scalf = base.powf(i as f32);//0.9 * i as f32;
             scale.x *= scalf;// / i as f32;
             scale.y *= scalf;// / i as f32;
             scale.z *= scalf;// / i as f32;
             // }
-            // rotation.x -= 0.05;
-
-            // Stack unique word transforms together for full path transform // Normal Way would be L = T * R * S  -> Order is S then R then T, but we use angletravel
-            transform *= /*Mat4::from_rotation_x(rotation.x) */ Mat4::from_rotation_y(rotation.y) * Mat4::from_translation(translation)  * Mat4::from_scale(scale);
-            // transform *= Mat4::from_translation(translation) * Mat4::from_scale(scale);
+ 
+            transform *= Mat4::from_rotation_x(rotation.x) * Mat4::from_rotation_y(rotation.y) * Mat4::from_translation(translation)  * Mat4::from_scale(scale);
         }
+    }
+    //3. Log naturalis, Bush
+    else if false {
+        let cnt_dirs = dirs.clone().count();
+
+        for (i, dir) in dirs.enumerate() {
+            if !dir.is_empty(){
+                for (j, c) in dir.chars().enumerate() {
+                    translation.y += c as i32 as f32 / 20.;
+                    translation.z -= (i+j) as f32;//c as i32 as f32 / 20.;//1000. / (2*i+1) as f32;//c as i32 as f32/10.;
+                    rotation.y = get_angle(rotation.y, c, i, j);           
+                }
+            }
+            // Scale experimentation
+            scale.x = 1.;// / i as f32;
+            scale.y = 1.;// / i as f32;
+            scale.z = 1.;// / i as f32;
+            let base:f32 = 1.1;
+            // let base:f32 = translation.z.ln();
+            println!("Ln(y): {:?}, y: {:?}", translation.y.ln(), translation.y);
+
+            // if i >= 4{                 
+            let scalf = base.powf(i as f32);//* 1.1 * i as f32;
+            scale.x *= scalf;// / i as f32;
+            scale.y *= scalf;// / i as f32;
+            scale.z *= scalf;// / i as f32;
+            
+            // if translation.y != 0. {
+            //     let scalf = translation.y.ln();//* 1.1 * i as f32;
+            //     scale.x = scalf;// / i as f32;
+            //     scale.y = scalf;// / i as f32;
+            //     scale.z = scalf;// / i as f32;
+                
+            // }
+            transform *= /*Mat4::from_rotation_x(rotation.x) */ Mat4::from_rotation_y(rotation.y) * Mat4::from_translation(translation)  * Mat4::from_scale(scale);
+            }
     }
 
     transform
 }
+
 
 // Take lessons from branching and create nested nests
 fn next_tree_transform(cnt: f32, entry: &DirEntry) -> Mat4{
@@ -460,7 +502,7 @@ fn extend_line_list_vec(line_vertices: &mut Vec<Vec3>, transform: &Mat4, parent_
     else {
         // Frist Point, fresh calculated from string that was delivered minus the last word, "finding parent"
         line_vertices.push(parent_transform.transform_point3(Vec3::default()));
-        println!("<><><><><><><>><><><><><>");
+        // println!("<><><><><><><>><><><><><>");
 
         // Second Point, out of given transform
         line_vertices.push(transform.transform_point3(Vec3::default()))
@@ -471,7 +513,6 @@ fn extend_line_list_vec(line_vertices: &mut Vec<Vec3>, transform: &Mat4, parent_
 fn extend_line_strip_vec(line_vertices: &mut Vec<Vec3>, transform: &PrimitiveTransform, cnt: f32, entry: &DirEntry) {
     line_vertices.push(Mat4::from_cols_array(&transform).transform_point3(Vec3::default()));
 }
-
 
 fn count_directories(path: &str) -> i32{
     let mut cnt = -1;

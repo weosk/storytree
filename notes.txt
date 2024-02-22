@@ -72,3 +72,11 @@ Next ToDos:
 //////////////////////////////////////////
 18.09.2023
 Every "main"- subfolder as their own mesh to manipulate and iterate with less delay?
+
+09.02.2024
+Baustellen:
+Octree - Sphere Clicking test 
+Mesh Subfolder splitting
+Treegeneration generalis
+Vertexcolourmarkings for metadata?
+Letter prerender / shader split / number split ? 

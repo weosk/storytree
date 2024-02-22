@@ -1,6 +1,6 @@
 //! A simple 3D scene with light shining over a cube sitting on a plane.
 
-use std::{env, fs, iter::Map};
+use std::{env, f32::consts::PI, fs, iter::Map};
 
 use bevy::{
     input::mouse::{MouseButtonInput, MouseMotion, MouseWheel}, 
@@ -194,11 +194,11 @@ fn setup(
     let line_mesh: Mesh;
 
     // (Todo:) No slash at the end of path string "/", lets the root branch go one sibling stock higher
-    (text_mesh, space_mesh, line_mesh) = generator::walk_path_to_mesh("/", generator::GenerationType::Branch, 20, false, true);
     // (text_mesh, space_mesh, line_mesh) = generator::walk_path_to_mesh("/sys/module", generator::GenerationType::Branch, true);
     // (text_mesh, space_mesh, line_mesh) = generator::walk_path_to_mesh("/home/nom/z/cataclysmdda-0.I/data", generator::GenerationType::Branch, true, true);
-    // (text_mesh, space_mesh, line_mesh) = generator::walk_path_to_mesh("/run", generator::GenerationType::Branch, true, true);
-    // (text_mesh, space_mesh, line_mesh) = generator::walk_path_to_mesh("./TestTree/Steps", generator::GenerationType::Branch, true, true);
+    // (text_mesh, space_mesh, line_mesh) = generator::walk_path_to_mesh("/run", generator::GenerationType::Branch, 20, true, true);
+    // (text_mesh, space_mesh, line_mesh) = generator::walk_path_to_mesh("./TestTree/Steps", generator::GenerationType::Branch, 20, true, true);
+    (text_mesh, space_mesh, line_mesh) = generator::walk_path_to_mesh("/", generator::GenerationType::Branch, 30, false, true);
 
     // Textmesh
 
@@ -256,7 +256,7 @@ fn setup(
             //     base_color_texture: Some(asset_server.load("branchorange.png")),
             //     ..default()
             // }),
-            material: materials.add(Color::rgba(1., 1.0, 0., 0.09).into()),
+            material: materials.add(Color::rgba(1., 1., 0., 0.12).into()),
             transform: Transform::from_scale(Vec3{x:scalef,y:scalef,z:scalef}),
             ..default()
             },
@@ -267,8 +267,9 @@ fn setup(
 
     // plane
     commands.spawn(PbrBundle {
-        mesh: meshes.add(shape::Plane::from_size(50.0).into()),
-        material: materials.add(Color::rgb(0.3, 0.5, 0.3).into()),
+        mesh: meshes.add(shape::Circle::new(500.).into()),
+        material: materials.add(Color::rgb(0.5, 0.4, 0.5).into()),
+        transform: Transform::from_rotation(Quat::from_rotation_x(-PI/2.)),
         ..default()
     });
     
@@ -376,6 +377,8 @@ fn update_scale(
     if keys.pressed(KeyCode::Key1) {
         for (mut transform, cube) in &mut tree {
             transform.scale *= Vec3{x: 0.9,y:0.9,z: 0.9};
+            // transform.rotate(Quat::from_rotation_y(0.05));
+            // transform.translation += Vec3{x: 0.,y:0.,z: 0.};            
         }
     }
     if keys.pressed(KeyCode::Key2) {
@@ -388,6 +391,9 @@ fn update_scale(
     if keys.pressed(KeyCode::Key3) {
         for (mut transform, cube) in &mut tree {
             transform.scale *= Vec3{x: 0.99,y:0.99,z: 0.99};
+            // transform.translate_around(Vec3{x: 0.,y:20.,z: -20.}, Quat::from_rotation_y(0.1));
+            // transform.translate_around(Vec3{x: 0.,y:20.,z: -20.}, Quat::from_rotation_y(0.1));
+
         }
     }
     if keys.pressed(KeyCode::Key4) {
