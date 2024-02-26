@@ -3,7 +3,7 @@ Rust Analyser: Debug
 
 Type in: 
 settings.json
--> Adjsut shit
+-> Adjust stuff
 
 https://blog.logrocket.com/json-and-rust-why-serde_json-is-the-top-choice/
 
