@@ -169,7 +169,7 @@ fn next_branch_transform(path: &str) -> Mat4 {
     let mut scale: Vec3 = Default::default();
 
     // 1.
-    if false {
+    if true {
         // Iterate over dirs and calculate a transform for each one / word iterater == depth, angle given through string
         // println!("{:?}", path);
         for (i, dir) in dirs.enumerate() {
@@ -187,7 +187,7 @@ fn next_branch_transform(path: &str) -> Mat4 {
                     // print!("{}={}({})",i, c, c as i32);
                     translation.z -= 2.;//translation_mod.z;
 
-                    rotation.y = get_angle(rotation.y, c, i, j);
+                    rotation.y = get_angle(rotation.y, c, i, j) * 2.;
                     translation.y += 1.; // Every letter leads to slightly higher position
                 }
             }      
@@ -203,14 +203,14 @@ fn next_branch_transform(path: &str) -> Mat4 {
                 scale.y = scalf;// / i as f32;
                 scale.z = scalf;// / i as f32;
             }
-            rotation.x -= 0.05;
+            rotation.x -= 0.035;
 
             // Stack unique word transforms together for full path transform // Normal Way would be L = T * R * S  -> Order is S then R then T, but we use angletravel
             transform *= Mat4::from_rotation_y(rotation.y) * Mat4::from_rotation_x(rotation.x)  *  Mat4::from_translation(translation) * Mat4::from_scale(scale);
         }
     }
     // 2. Treetrunk
-    else if true{ // more space for experimentation
+    else if false{ // more space for experimentation
         // Todo: Get them branches to spread out wide first, then decrease their spread so they stay over their local parent folders
         // > z high, then exponentially lower should do the trick? Rotation might need fixing. 
         let cnt_dirs = dirs.clone().count();
@@ -480,7 +480,7 @@ fn extend_space_vec(space_vertices: &mut Vec<[f32; 3]>, space_indices: &mut Vec<
     
         for each in ground_vertices {
             // Convert each input vector to Vec3
-            let position_vector = Vec3::new(each[0], each[1], each[2]);
+            let position_vector = Vec3::new(each[0], each[1], each[2])*Vec3::splat(0.3);
     
             // Perform the vector transformation using Bevy's Transform component
             let transformed_vector = transform.transform_point(position_vector);

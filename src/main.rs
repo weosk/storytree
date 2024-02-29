@@ -81,8 +81,8 @@ fn process_inputs_system(
 
     // Update Cam Yaw & Pitch  // adjust for very small fovs
     for event in mouse_motion_events.iter() {
-            cam.yaw   += -event.delta.x; 
-            cam.pitch += -event.delta.y;     
+            cam.yaw   += -event.delta.x * cam.fov; 
+            cam.pitch += -event.delta.y * cam.fov;     
     }
 
     // Update transform from keyboardinput and Yaw&Pitch
@@ -115,21 +115,41 @@ fn process_inputs_system(
                 delta.y += cam.speed;
             }
 
-            // Manual Zoom
+            // Manual Zoom 1. -> 0.1 -> 0.01 -> 0.001 -> ..
             if keys.pressed(KeyCode::Space) {
+                let mut i = 1;
+                while (1. - cam.fov * 10.0_f32.powf(i as f32)) >= 0. {
+                    i += 1;
+                }
+                cam.fov -= 0.1_f32.powf(i as f32);
 
-                // temp_transform.scale += Vec3{ x: 10., y: 10., z: 10.}; -> This let's the mesh disapear 
-                if cam.fov <= 0.005
-                {
-                    cam.fov -= 0.0005;
-                }
-                else
-                {
-                    cam.fov -= 0.005;
-                }
             }
             if keys.pressed(KeyCode::AltLeft) {
-                cam.fov += 0.005;
+                let mut i = 0;
+
+                if cam.fov < 1. {
+                    while (1. - cam.fov * 10.0_f32.powf(i as f32)) >= 0. {
+                        i += 1;
+                        println!("{:?} :: {:?}",cam.fov,  i);
+                    }
+                    cam.fov += 0.1_f32.powf(i as f32);
+                }   
+                else {
+                    i = 1;
+                    while (1. - cam.fov / 10.0_f32.powf(i as f32)) <= 0. {
+                        i += 1;
+                        println!("{:?} :: {:?}",cam.fov,  i);
+                    }
+                    cam.fov += 0.1_f32.powf(i as f32);
+                }    
+
+                if cam.fov > 3.0 {
+                    cam.fov = 3.0
+                }
+                else {
+                    cam.fov += 0.1_f32.powf(i as f32);
+                }
+            
             }
 
             // Adjust Speed
@@ -154,11 +174,18 @@ fn process_inputs_system(
 
         // Update actual fov / perspective / to zoom to an extend
         for mut pp in q_pp.iter_mut() {
+            // Perspective Projection Update
             *pp = PerspectiveProjection {
                 fov: cam.fov,
                 aspect_ratio: 1.0,
                 ..default()
             }.into()
+
+            // Orthographic Projection Update
+            // *pp = OrthographicProjection {
+            //     scale: cam.fov,
+            //     ..Default::default()
+            // }.into()
         }
     }
 
@@ -194,11 +221,11 @@ fn setup(
     let line_mesh: Mesh;
 
     // (Todo:) No slash at the end of path string "/", lets the root branch go one sibling stock higher
-    // (text_mesh, space_mesh, line_mesh) = generator::walk_path_to_mesh("/sys/module", generator::GenerationType::Branch, true);
-    // (text_mesh, space_mesh, line_mesh) = generator::walk_path_to_mesh("/home/nom/z/cataclysmdda-0.I/data", generator::GenerationType::Branch, true, true);
+    // (text_mesh, space_mesh, line_mesh) = generator::walk_path_to_mesh("/sys/module", generator::GenerationType::Branch, 4,true, true);
+    // (text_mesh, space_mesh, line_mesh) = generator::walk_path_to_mesh("/home/nom/z/cataclysmdda-0.I/data", generator::GenerationType::Branch, 10, true, true);
     // (text_mesh, space_mesh, line_mesh) = generator::walk_path_to_mesh("/run", generator::GenerationType::Branch, 20, true, true);
-    // (text_mesh, space_mesh, line_mesh) = generator::walk_path_to_mesh("./TestTree/Steps", generator::GenerationType::Branch, 20, true, true);
-    (text_mesh, space_mesh, line_mesh) = generator::walk_path_to_mesh("/", generator::GenerationType::Branch, 30, false, true);
+    // (text_mesh, space_mesh, line_mesh) = generator::walk_path_to_mesh("./TestTree", generator::GenerationType::Branch, 20, true, true);
+    (text_mesh, space_mesh, line_mesh) = generator::walk_path_to_mesh("/", generator::GenerationType::Branch, 100, false, false);
 
     // Textmesh
 
@@ -251,12 +278,7 @@ fn setup(
         // Linemesh
         commands.spawn((PbrBundle {
             mesh: meshes.add(line_mesh),
-            // material: materials.add(StandardMaterial {
-            //     // base_color_texture: Some(asset_server.load("lettersheetEdges.png")),
-            //     base_color_texture: Some(asset_server.load("branchorange.png")),
-            //     ..default()
-            // }),
-            material: materials.add(Color::rgba(1., 1., 0., 0.12).into()),
+            material: materials.add(Color::rgba(0.7, 0.6, 0.2, 0.32).into()),
             transform: Transform::from_scale(Vec3{x:scalef,y:scalef,z:scalef}),
             ..default()
             },
@@ -267,13 +289,13 @@ fn setup(
 
     // plane
     commands.spawn(PbrBundle {
-        mesh: meshes.add(shape::Circle::new(500.).into()),
-        material: materials.add(Color::rgb(0.5, 0.4, 0.5).into()),
+        mesh: meshes.add(shape::Circle::new(10.).into()),
+        material: materials.add(Color::rgb(0.2, 0.4, 0.4).into()),
         transform: Transform::from_rotation(Quat::from_rotation_x(-PI/2.)),
         ..default()
     });
     
-    // cube
+    // cubes
     // for i in 1..1000
     // {
     // commands.spawn(PbrBundle {
@@ -324,29 +346,29 @@ fn setup(
     let w = 1.0;
 
     // Working classic cam
-    commands.spawn((Camera3dBundle {
-        transform: Transform::from_xyz(0., 10., 40.0).looking_at(Vec3::ZERO, Vec3::Y),
-        projection: PerspectiveProjection {
-            fov: (90.0 / 360.0) * (std::f32::consts::PI * 2.0),
-            aspect_ratio: 1.0,
-            ..default()
-        }.into(),
-        ..default()
-    },
-        Cam {yaw: 0., pitch: 0., fov: 1.0, speed:0.2, pos: Vec3::ZERO, rot: Quat::from_xyzw(0.0, 0.0, 0.0, 1.0)},
-    ));
-
-    // new 3D orthographic camera
     // commands.spawn((Camera3dBundle {
-    //     projection: OrthographicProjection {
-    //         scale: 0.1,
-    //         scaling_mode: ScalingMode::FixedVertical(5.0),
+    //     transform: Transform::from_xyz(0., 10., 40.0).looking_at(Vec3::ZERO, Vec3::Y),
+    //     projection: PerspectiveProjection {
+    //         fov: (90.0 / 360.0) * (std::f32::consts::PI * 2.0),
+    //         aspect_ratio: 1.0,
     //         ..default()
     //     }.into(),
     //     ..default()
     // },
-    //         Cam {yaw: 0., pitch: 0., fov: 1.0, speed:0.2, pos: Vec3::ZERO, rot: Quat::from_xyzw(0.0, 0.0, 0.0, 1.0)},
+    //     Cam {yaw: 0., pitch: 0., fov: 1.0, speed:0.2, pos: Vec3::ZERO, rot: Quat::from_xyzw(0.0, 0.0, 0.0, 1.0)},
     // ));
+
+    // new 3D orthographic camera
+    commands.spawn((Camera3dBundle {
+        projection: OrthographicProjection {
+            scale: 0.1,
+            //scaling_mode: ScalingMode::FixedVertical(15.0),
+            ..default()
+        }.into(),
+        ..default()
+    },
+            Cam {yaw: 0., pitch: 0., fov: 1.0, speed:0.2, pos: Vec3::ZERO, rot: Quat::from_xyzw(0.0, 0.0, 0.0, 1.0)},
+    ));
     
 }
 
@@ -371,21 +393,41 @@ fn animate_light_direction(
 fn update_scale(
     keys: Res<Input<KeyCode>>,
     mut tree: Query<(&mut Transform, &treemeshmarker)>,
+    mut q_cam: Query<&mut Cam>
 )
+
 {
+    let mut cam = q_cam.single_mut();
+
     // Scale 
     if keys.pressed(KeyCode::Key1) {
         for (mut transform, cube) in &mut tree {
+            // transform.translation = -cam.pos * transform.scale;
             transform.scale *= Vec3{x: 0.9,y:0.9,z: 0.9};
+            
             // transform.rotate(Quat::from_rotation_y(0.05));
             // transform.translation += Vec3{x: 0.,y:0.,z: 0.};            
         }
     }
+    // if keys.just_released(KeyCode::Key1) {
+    //     for (mut transform, cube) in &mut tree {
+    //         // transform.translation =  cam.pos * transform.scale;          
+    //     }
+    // }
     if keys.pressed(KeyCode::Key2) {
         for (mut transform, cube) in &mut tree {
+
+            // transform.translation = -cam.pos * transform.scale;
             transform.scale *= Vec3{x: 1.1,y:1.1,z: 1.1};
         }
     }
+    // if keys.just_released(KeyCode::Key2) {
+    //     for (mut transform, cube) in &mut tree {
+
+    //         // transform.translation = - cam.pos * transform.scale;
+
+    //     }
+    // }
 
     // Fine scale
     if keys.pressed(KeyCode::Key3) {
