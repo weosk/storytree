@@ -269,11 +269,13 @@ fn setup(
             //     base_color_texture: Some(asset_server.load("branchorange.png")),
             //     ..default()
             // }),
-            material: materials.add(StandardMaterial::from(Color::RED)),
+            material: materials.add(
+                Color::rgba(16., 0., 0., 1.0),
+            ),
             ..Default::default()
             },
             treemeshmarker,
-            RenderLayers::all(),
+            RenderLayers::layer(0),
             )
             );
 
