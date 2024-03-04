@@ -3,10 +3,11 @@
 use std::{env, f32::consts::PI, fs, iter::Map};
 
 use bevy::{
-    input::mouse::{MouseButtonInput, MouseMotion, MouseWheel}, 
-    math::*, pbr::wireframe::WireframeConfig, 
-    prelude::*, 
-    render::{camera::ScalingMode, mesh::{self, Indices, PrimitiveTopology}}
+    // input::*,
+    input::{keyboard::KeyCode, mouse::{MouseButtonInput, MouseMotion, MouseWheel}},
+    math::*, pbr::{extract_meshes, wireframe::WireframeConfig}, 
+    prelude::*,
+    render::{camera::ScalingMode, mesh::{self, Indices, PrimitiveTopology}, render_resource::{AsBindGroup, ShaderRef}, view::RenderLayers}
 };
 
 use walkdir::WalkDir;
@@ -35,6 +36,7 @@ struct Cam
 
 #[derive(Component)]
 struct treemeshmarker;
+// struct linemeshmarker;
 
 fn main() {
     //env::set_var("RUST_BACKTRACE", "1");
@@ -43,13 +45,13 @@ fn main() {
         .add_plugins(DefaultPlugins)
         .insert_resource(ClearColor(Color::rgb(0.01, 0.01, 0.1))) // Background 2 Darkblu
         .add_systems(Startup, setup)
-        .add_systems(Update, (bevy::window::close_on_esc, process_inputs_system, animate_light_direction, update_scale))
+        .add_systems(Update, (bevy::window::close_on_esc, process_inputs_system, animate_light_direction, update_scale, pick_node))
 
         .insert_resource(AmbientLight {
             color: Color::Rgba {
                 red: 0.95,
                 green: 0.3,
-                blue: 0.0,
+                blue: 1.0,
                 alpha:1.0,
             },
             brightness: 0.5,},
@@ -62,10 +64,9 @@ fn count_entities(all_entities: Query<()>) {
     dbg!(all_entities.iter().count());
 }
 
-
 /// This system prints out all mouse events as they come in
 fn process_inputs_system(
-    keys: Res<Input<KeyCode>>,
+    keys: Res<ButtonInput<KeyCode>>,
     mut q_transform: Query<&mut Transform, With<Cam>>,
     mut q_cam: Query<&mut Cam>,  
     mut mouse_motion_events: EventReader<MouseMotion>,
@@ -80,7 +81,7 @@ fn process_inputs_system(
     let mut cam = q_cam.single_mut();
 
     // Update Cam Yaw & Pitch  // adjust for very small fovs
-    for event in mouse_motion_events.iter() {
+    for event in mouse_motion_events.read() {
             cam.yaw   += -event.delta.x * cam.fov; 
             cam.pitch += -event.delta.y * cam.fov;     
     }
@@ -96,22 +97,22 @@ fn process_inputs_system(
         // Tastatursteuerung, deltatranslation
         let translation_delta = {
             let mut delta = Vec3::ZERO;
-            if keys.pressed(KeyCode::W) {
+            if keys.pressed(KeyCode::KeyW) {
                 delta.z -= cam.speed;
             }
-            if keys.pressed(KeyCode::S) {
+            if keys.pressed(KeyCode::KeyS) {
                 delta.z += cam.speed;
             }
-            if keys.pressed(KeyCode::A) {
+            if keys.pressed(KeyCode::KeyA) {
                 delta.x -= cam.speed;
             }
-            if keys.pressed(KeyCode::D) {
+            if keys.pressed(KeyCode::KeyD) {
                 delta.x += cam.speed;
             }
-            if keys.pressed(KeyCode::Q) {
+            if keys.pressed(KeyCode::KeyQ) {
                 delta.y -= cam.speed;
             }
-            if keys.pressed(KeyCode::E) {
+            if keys.pressed(KeyCode::KeyE) {
                 delta.y += cam.speed;
             }
 
@@ -149,7 +150,6 @@ fn process_inputs_system(
                 else {
                     cam.fov += 0.1_f32.powf(i as f32);
                 }
-            
             }
 
             // Adjust Speed
@@ -221,6 +221,7 @@ fn setup(
     let line_mesh: Mesh;
 
     // (Todo:) No slash at the end of path string "/", lets the root branch go one sibling stock higher
+
     // (text_mesh, space_mesh, line_mesh) = generator::walk_path_to_mesh("/sys/module", generator::GenerationType::Branch, 4,true, true);
     // (text_mesh, space_mesh, line_mesh) = generator::walk_path_to_mesh("/home/nom/z/cataclysmdda-0.I/data", generator::GenerationType::Branch, 10, true, true);
     // (text_mesh, space_mesh, line_mesh) = generator::walk_path_to_mesh("/run", generator::GenerationType::Branch, 20, true, true);
@@ -229,7 +230,7 @@ fn setup(
 
     // Textmesh
 
-    let scalef = 1.0; 
+    let scalef = 1.; 
     commands.spawn((PbrBundle {
         // mesh: meshes.add(generator::generate_space_mesh()),
         mesh: meshes.add(text_mesh),
@@ -278,19 +279,25 @@ fn setup(
         // Linemesh
         commands.spawn((PbrBundle {
             mesh: meshes.add(line_mesh),
-            material: materials.add(Color::rgba(0.7, 0.6, 0.2, 0.32).into()),
-            transform: Transform::from_scale(Vec3{x:scalef,y:scalef,z:scalef}),
-            ..default()
+
+            material: materials.add(
+                Color::rgba(16., 0., 0., 1.0),
+            ),
+            ..Default::default()
+
             },
-            treemeshmarker,)
+            treemeshmarker,
+            RenderLayers::layer(0),
+            )
             );
 
     // Default Spawn of Scene Spawning ///////////////////////////////////////////////////////
 
     // plane
     commands.spawn(PbrBundle {
-        mesh: meshes.add(shape::Circle::new(10.).into()),
-        material: materials.add(Color::rgb(0.2, 0.4, 0.4).into()),
+
+        mesh: meshes.add(Circle::new(500.)),
+        material: materials.add(Color::rgb(0.5, 0.4, 0.5)),
         transform: Transform::from_rotation(Quat::from_rotation_x(-PI/2.)),
         ..default()
     });
@@ -325,20 +332,23 @@ fn setup(
     // });
 
     // Directional Light, Sunlike
-    commands.spawn(DirectionalLightBundle {
+    commands.spawn((DirectionalLightBundle {
         directional_light: DirectionalLight {
                         color: Color::Rgba {
                         red: 0.7,
                         green: 0.4,
                         blue: 0.1,
-                        alpha:1.0,
+                        alpha:0.1,
             },
             shadows_enabled: true,
             ..default()
         },
         transform: Transform::from_xyz(0.,200.,0.)*Transform::from_rotation(Quat::from_rotation_x(-90.)),
         ..default()
-    });
+    },
+    // RenderLayers::all(),)
+)
+);
 
     let x = 1.0;
     let y = 1.0;
@@ -346,29 +356,31 @@ fn setup(
     let w = 1.0;
 
     // Working classic cam
-    // commands.spawn((Camera3dBundle {
-    //     transform: Transform::from_xyz(0., 10., 40.0).looking_at(Vec3::ZERO, Vec3::Y),
-    //     projection: PerspectiveProjection {
-    //         fov: (90.0 / 360.0) * (std::f32::consts::PI * 2.0),
-    //         aspect_ratio: 1.0,
-    //         ..default()
-    //     }.into(),
-    //     ..default()
-    // },
-    //     Cam {yaw: 0., pitch: 0., fov: 1.0, speed:0.2, pos: Vec3::ZERO, rot: Quat::from_xyzw(0.0, 0.0, 0.0, 1.0)},
-    // ));
 
-    // new 3D orthographic camera
     commands.spawn((Camera3dBundle {
-        projection: OrthographicProjection {
-            scale: 0.1,
-            //scaling_mode: ScalingMode::FixedVertical(15.0),
+        transform: Transform::from_xyz(0., 10., 40.0).looking_at(Vec3::ZERO, Vec3::Y),
+        projection: PerspectiveProjection {
+            fov: (90.0 / 360.0) * (std::f32::consts::PI * 2.0),
+            aspect_ratio: 1.0,
             ..default()
         }.into(),
         ..default()
     },
-            Cam {yaw: 0., pitch: 0., fov: 1.0, speed:0.2, pos: Vec3::ZERO, rot: Quat::from_xyzw(0.0, 0.0, 0.0, 1.0)},
+        Cam {yaw: 0., pitch: 0., fov: 1.0, speed:0.2, pos: Vec3::ZERO, rot: Quat::from_xyzw(0.0, 0.0, 0.0, 1.0)},
+        // RenderLayers::all(),
     ));
+
+    // new 3D orthographic camera
+    // commands.spawn((Camera3dBundle {
+    //     projection: OrthographicProjection {
+    //         scale: 0.1,
+    //         //scaling_mode: ScalingMode::FixedVertical(15.0),
+    //         ..default()
+    //     }.into(),
+    //     ..default()
+    // },
+    //         Cam {yaw: 0., pitch: 0., fov: 1.0, speed:0.2, pos: Vec3::ZERO, rot: Quat::from_xyzw(0.0, 0.0, 0.0, 1.0)},
+    // ));
     
 }
 
@@ -391,7 +403,7 @@ fn animate_light_direction(
 }
 
 fn update_scale(
-    keys: Res<Input<KeyCode>>,
+    keys: Res<ButtonInput<KeyCode>>,
     mut tree: Query<(&mut Transform, &treemeshmarker)>,
     mut q_cam: Query<&mut Cam>
 )
@@ -400,7 +412,7 @@ fn update_scale(
     let mut cam = q_cam.single_mut();
 
     // Scale 
-    if keys.pressed(KeyCode::Key1) {
+    if keys.pressed(KeyCode::Digit1) {
         for (mut transform, cube) in &mut tree {
             // transform.translation = -cam.pos * transform.scale;
             transform.scale *= Vec3{x: 0.9,y:0.9,z: 0.9};
@@ -409,12 +421,8 @@ fn update_scale(
             // transform.translation += Vec3{x: 0.,y:0.,z: 0.};            
         }
     }
-    // if keys.just_released(KeyCode::Key1) {
-    //     for (mut transform, cube) in &mut tree {
-    //         // transform.translation =  cam.pos * transform.scale;          
-    //     }
-    // }
-    if keys.pressed(KeyCode::Key2) {
+
+    if keys.pressed(KeyCode::Digit2) {
         for (mut transform, cube) in &mut tree {
 
             // transform.translation = -cam.pos * transform.scale;
@@ -430,7 +438,7 @@ fn update_scale(
     // }
 
     // Fine scale
-    if keys.pressed(KeyCode::Key3) {
+    if keys.pressed(KeyCode::Digit3) {
         for (mut transform, cube) in &mut tree {
             transform.scale *= Vec3{x: 0.99,y:0.99,z: 0.99};
             // transform.translate_around(Vec3{x: 0.,y:20.,z: -20.}, Quat::from_rotation_y(0.1));
@@ -438,10 +446,50 @@ fn update_scale(
 
         }
     }
-    if keys.pressed(KeyCode::Key4) {
+    if keys.pressed(KeyCode::Digit4) {
         for (mut transform, cube) in &mut tree {
             transform.scale *= Vec3{x: 1.01,y:1.01,z: 1.01};
         }
     }
 
+    if keys.pressed(KeyCode::Digit5) {
+        for (mut transform, cube) in &mut tree {
+            // transform.scale *= Vec3{x: 1.01,y:1.01,z: 1.01};
+            transform.rotate(Quat::from_rotation_y(0.05));
+        }
+    }
+
+}
+fn pick_node(
+    buttons: Res<ButtonInput<MouseButton>>,
+    // mut meshes: ResMut<Assets<Mesh>>,
+    // mut tree: Query<(&mut Mesh, &treemeshmarker)>,
+) {
+    if buttons.just_pressed(MouseButton::Left) {
+        // Left button was pressed
+        // println!("Ooioioio");
+
+        // Build ray from curor or screencenter position with camera transformation? , iterate over all points and check for hits
+        // Get the distance of an intersection with a BoundingSphere, if any.
+        // sphere_intersection_at(&self, sphere: &BoundingSphere);
+
+        // pub struct Ray3d {
+        //     pub origin: Vec3,
+        //     pub direction: Direction3d,
+        // }
+        // for (mut mesh, cube) in &mut meshes {
+        
+        // }
+        
+    }
+    if buttons.just_released(MouseButton::Left) {
+        // Left Button was released
+    }
+    if buttons.pressed(MouseButton::Right) {
+        // Right Button is being held down
+    }
+    // we can check multiple at once with `.any_*`
+    if buttons.any_just_pressed([MouseButton::Left, MouseButton::Right]) {
+        // Either the left or the right button was just pressed
+    }
 }

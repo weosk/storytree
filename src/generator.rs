@@ -4,6 +4,7 @@ use bevy::reflect::{Enum, TypeData};
 use bevy::render::mesh::{self, PrimitiveTopology};
 use bevy::math::*;      // Affine3A
 use bevy::prelude::*;   
+use bevy::render::render_asset::RenderAssetUsages;
 use bevy::utils::RandomState;
 use walkdir::{WalkDir, DirEntry};
 
@@ -12,7 +13,7 @@ use std::collections::LinkedList;
 use std::f32::consts::PI;
 use std::time::Instant;
 
-use std::ops::Range;
+use std::ops::{Mul, Range};
 
 type PrimitiveTransform = [f32; 16];
 // enum MeshType {
@@ -91,9 +92,9 @@ pub fn walk_path_to_mesh(entry_path: &str, generation_type: GenerationType, dept
         }
     }
 
-    let mut text_mesh : Mesh = Mesh::new(PrimitiveTopology::TriangleList);
-    let mut space_mesh : Mesh = Mesh::new(PrimitiveTopology::TriangleList);
-    let mut line_mesh : Mesh = Mesh::new(PrimitiveTopology::LineList);
+    let mut text_mesh : Mesh = Mesh::new(PrimitiveTopology::TriangleList, RenderAssetUsages::default());
+    let mut space_mesh : Mesh = Mesh::new(PrimitiveTopology::TriangleList, RenderAssetUsages::default());
+    let mut line_mesh : Mesh = Mesh::new(PrimitiveTopology::LineList, RenderAssetUsages::default());
 
     let text_uvs =  vec![[0f32, 0f32]; text_vertices.len()];
     let space_uvs = vec![[0f32, 0f32]; space_vertices.len()];
@@ -105,11 +106,13 @@ pub fn walk_path_to_mesh(entry_path: &str, generation_type: GenerationType, dept
     text_mesh.compute_flat_normals();
 
     space_mesh.insert_attribute(Mesh::ATTRIBUTE_POSITION, space_vertices.clone());
-    space_mesh.set_indices(Some(mesh::Indices::U32(space_indices)));
+    space_mesh.insert_indices(mesh::Indices::U32(space_indices));
     space_mesh.insert_attribute(Mesh::ATTRIBUTE_UV_0, space_uvs);
     space_mesh.insert_attribute(Mesh::ATTRIBUTE_NORMAL, space_vertices); // Normals are just the vertex positions as we go out from 0,0,0
 
+    // let uvs = vec![[0.5, 0.5]; line_list_vertices.len()];
     line_mesh.insert_attribute(Mesh::ATTRIBUTE_POSITION, line_list_vertices);
+    // space_mesh.insert_attribute(Mesh::ATTRIBUTE_UV_0, uvs);
 
     return (text_mesh, space_mesh, line_mesh)
 }
@@ -185,7 +188,7 @@ fn next_branch_transform(path: &str) -> Mat4 {
                 for (j, c) in dir.chars().enumerate() {
                     // Prints letter by letter with iteration number and ascii value
                     // print!("{}={}({})",i, c, c as i32);
-                    translation.z -= 2.;//translation_mod.z;
+                    translation.z -= 1.;//translation_mod.z;
 
                     rotation.y = get_angle(rotation.y, c, i, j) * 2.;
                     translation.y += 1.; // Every letter leads to slightly higher position
@@ -218,21 +221,21 @@ fn next_branch_transform(path: &str) -> Mat4 {
         for (i, dir) in dirs.enumerate() {
             if !dir.is_empty(){
                 for (j, c) in dir.chars().enumerate() {
-                    if i <= 1 {
+                    if i <= 1 { // First step/word only goes up
                         translation.y += c as i32 as f32 * 1.5 - 150.;
                         rotation.y = get_angle(rotation.y, c, i, j);           
                     }    
                     else if i <= 5 {
                         // translation.y += c as i32 as f32 / 20.;
                         translation.y = 0.;
-                        translation.z -= (j*2) as f32;//c as i32 as f32 / 20.;//1000. / (2*i+1) as f32;//c as i32 as f32/10.;
+                        translation.z -= (j*2) as f32 * 0.2;//c as i32 as f32 / 20.;//1000. / (2*i+1) as f32;//c as i32 as f32/10.;
                         rotation.y = get_angle(rotation.y, c, i, j);           
                         rotation.x += 0.002;
                     }
                     else 
                     {
                         translation.y = 0.;
-                        translation.z -= (j*2) as f32;//c as i32 as f32 / 20.;//1000. / (2*i+1) as f32;//c as i32 as f32/10.;
+                        translation.z -= (j*2) as f32 * 0.4;//c as i32 as f32 / 20.;//1000. / (2*i+1) as f32;//c as i32 as f32/10.;
                         rotation.y = get_angle(rotation.y, c, i, j);           
                         rotation.x -= 0.002;
                     }
@@ -260,18 +263,19 @@ fn next_branch_transform(path: &str) -> Mat4 {
         for (i, dir) in dirs.enumerate() {
             if !dir.is_empty(){
                 for (j, c) in dir.chars().enumerate() {
-                    translation.y += c as i32 as f32 / 20.;
-                    translation.z -= (i+j) as f32;//c as i32 as f32 / 20.;//1000. / (2*i+1) as f32;//c as i32 as f32/10.;
+                    translation.y += c as i32 as f32 / 30.;
+                    translation.z -= (i+j) as f32 * 0.5;//c as i32 as f32 / 20.;//1000. / (2*i+1) as f32;//c as i32 as f32/10.;
                     rotation.y = get_angle(rotation.y, c, i, j);           
                 }
             }
+
             // Scale experimentation
             scale.x = 1.;// / i as f32;
             scale.y = 1.;// / i as f32;
             scale.z = 1.;// / i as f32;
             let base:f32 = 1.1;
             // let base:f32 = translation.z.ln();
-            println!("Ln(y): {:?}, y: {:?}", translation.y.ln(), translation.y);
+            // println!("Ln(y): {:?}, y: {:?}", translation.y.ln(), translation.y);
 
             // if i >= 4{                 
             let scalf = base.powf(i as f32);//* 1.1 * i as f32;
@@ -283,9 +287,9 @@ fn next_branch_transform(path: &str) -> Mat4 {
             //     let scalf = translation.y.ln();//* 1.1 * i as f32;
             //     scale.x = scalf;// / i as f32;
             //     scale.y = scalf;// / i as f32;
-            //     scale.z = scalf;// / i as f32;
-                
+            //     scale.z = scalf;// / i as f32;  
             // }
+
             transform *= /*Mat4::from_rotation_x(rotation.x) */ Mat4::from_rotation_y(rotation.y) * Mat4::from_translation(translation)  * Mat4::from_scale(scale);
             }
     }
@@ -377,8 +381,8 @@ fn get_angle(mut current_angle: f32, c: char, word_num: usize, char_num: usize) 
 // Generates the 3D text and offsets it to be readable 
 fn extend_text_vec(vertices: &mut Vec<f32>, generator: &mut MeshGenerator<Face>, transform: &Mat4, entry: &DirEntry) {
 
-    // Adjust position, relative to dodeca
-    let transform = transform.clone() * Mat4::from_translation(Vec3 { x: 0.0, y: 0., z: 0. });
+    // Adjust position, relative to dodeca, adjust scale
+    let transform = transform.clone() * Mat4::from_translation(Vec3 { x: 0.0, y: 0., z: 0. }) * Mat4::from_scale(Vec3::splat(0.5));
 
     let text_mesh: MeshText = generator
         .generate_section(entry.path().to_str().unwrap(), true, Some(&transform.to_cols_array()))
@@ -480,13 +484,15 @@ fn extend_space_vec(space_vertices: &mut Vec<[f32; 3]>, space_indices: &mut Vec<
     
         for each in ground_vertices {
             // Convert each input vector to Vec3
-            let position_vector = Vec3::new(each[0], each[1], each[2])*Vec3::splat(0.3);
-    
+            let position_vector = Vec3::new(each[0], each[1], each[2])*Vec3::splat(0.3);//.mul(0.10147); // Multiplied by scaling factor
+
             // Perform the vector transformation using Bevy's Transform component
-            let transformed_vector = transform.transform_point(position_vector);
+            // let transformed_vector : Mat4 = transform.transform_point(position_vector);
     
             // Push the transformed vector into vertexvec
-            space_vertices.push(transformed_vector.into());
+            // space_vertices.push(transformed_vector.into());
+            space_vertices.push(transform.transform_point(position_vector).into());
+
         }
 }
 
