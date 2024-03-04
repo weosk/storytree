@@ -5,6 +5,7 @@ use std::{env, f32::consts::PI, fs, iter::Map};
 use bevy::{
     input::{keyboard::KeyCode, mouse::{MouseButtonInput, MouseMotion, MouseWheel}},
     math::*, pbr::{extract_meshes, wireframe::WireframeConfig}, 
+    math::primitives::Sphere,
     prelude::*,
     render::{camera::ScalingMode, mesh::{self, Indices, PrimitiveTopology}, render_resource::{AsBindGroup, ShaderRef}, view::RenderLayers}
 };
@@ -17,6 +18,7 @@ use walkdir::WalkDir;
 // use treedata::Treedata;
 
 mod generator;
+mod database;
 // use generator::generate_space_mesh;
 
 // mod treebuilder;
@@ -312,6 +314,14 @@ fn setup(
     // });
     // }   
 
+    // Pick test sphere
+        commands.spawn(PbrBundle {
+        mesh: meshes.add(Mesh::from(Sphere { radius: 10. })),
+        material: materials.add(Color::rgb(0.8, 0.7, 0.6)),
+        transform: Transform::from_xyz(0.0, (5) as f32, 0.0),
+        ..default()
+        });
+
     // // // Point light, torchlike
     // commands.spawn(PointLightBundle {
     //     point_light: PointLight {
@@ -463,8 +473,22 @@ fn pick_node(
     buttons: Res<ButtonInput<MouseButton>>,
     // mut meshes: ResMut<Assets<Mesh>>,
     // mut tree: Query<(&mut Mesh, &treemeshmarker)>,
-) {
+
+    // q: Query<&Camera>,
+    // mut q_cam: Query<&mut Cam>,  
+){
+    // Camera::viewport_to_world();
+        // for camera in &q_cam {
+            // camera.viewport_to_world(camera.clear_color), viewport_position)
+        // } 
+
     if buttons.just_pressed(MouseButton::Left) {
+
+        let mut baum = database::Tree::new();
+        baum.construct("/".to_string());
+        // println!("{:?}",baum.branch);
+        println!("{:?}",baum.siblings);
+
         // Left button was pressed
         // println!("Ooioioio");
 
