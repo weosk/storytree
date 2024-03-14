@@ -229,23 +229,52 @@ fn setup(
     // (text_mesh, space_mesh, line_mesh) = generator::walk_path_to_mesh("./TestTree", generator::GenerationType::Branch, 20, true, true);
     (text_mesh, space_mesh, line_mesh) = generator::walk_path_to_mesh("/", generator::GenerationType::Branch, 100, false, false);
 
-    // Textmesh
+    // // Textmesh
+    // let scalef = 1.; 
+    // commands.spawn((PbrBundle {
+    //     // mesh: meshes.add(generator::generate_space_mesh()),
+    //     mesh: meshes.add(text_mesh),
+    //     // material: materials.add(Color::rgb(0.6, 0.3, 0.1).into()),
+    //     material: materials.add(StandardMaterial {
+    //         // base_color_texture: Some(asset_server.load("lettersheetEdges.png")),
+    //         base_color_texture: Some(asset_server.load("branchorange.png")),
+    //         ..default()
+    //     }),
+    //     transform: Transform::from_scale(Vec3{x:scalef,y:scalef,z:scalef}),
+    //     ..default()
+    //     },
+    //     treemeshmarker,)
+    //     );
 
-    let scalef = 1.; 
-    commands.spawn((PbrBundle {
-        // mesh: meshes.add(generator::generate_space_mesh()),
-        mesh: meshes.add(text_mesh),
-        // material: materials.add(Color::rgb(0.6, 0.3, 0.1).into()),
-        material: materials.add(StandardMaterial {
-            // base_color_texture: Some(asset_server.load("lettersheetEdges.png")),
-            base_color_texture: Some(asset_server.load("branchorange.png")),
-            ..default()
-        }),
-        transform: Transform::from_scale(Vec3{x:scalef,y:scalef,z:scalef}),
-        ..default()
-        },
-        treemeshmarker,)
-        );
+    // // Spacemesh
+    // commands.spawn((PbrBundle {
+    //     mesh: meshes.add(space_mesh),
+    //     material: materials.add(StandardMaterial {
+    //         // base_color_texture: Some(asset_server.load("lettersheetEdges.png")),
+    //         base_color_texture: Some(asset_server.load("branchorange.png")),
+    //         ..default()
+    //     }),
+    //     transform: Transform::from_scale(Vec3{x:scalef,y:scalef,z:scalef}),
+    //     ..default()
+    //     },
+    //     treemeshmarker,)
+    //     );
+
+    // // Linemesh
+    // commands.spawn((PbrBundle {
+    //     mesh: meshes.add(line_mesh),
+
+    //     material: materials.add(
+    //         Color::rgba(16., 0., 0., 1.0),
+    //     ),
+    //     ..Default::default()
+
+    //     },
+    //     treemeshmarker,
+    //     RenderLayers::layer(0),
+    //     )
+    //     );
+
 
     // let scalef = 1.0; 
     // commands.spawn((PbrBundle {
@@ -263,34 +292,6 @@ fn setup(
     //     treemeshmarker,)
     //     );
 
-        // Spacemesh
-        commands.spawn((PbrBundle {
-            mesh: meshes.add(space_mesh),
-            material: materials.add(StandardMaterial {
-                // base_color_texture: Some(asset_server.load("lettersheetEdges.png")),
-                base_color_texture: Some(asset_server.load("branchorange.png")),
-                ..default()
-            }),
-            transform: Transform::from_scale(Vec3{x:scalef,y:scalef,z:scalef}),
-            ..default()
-            },
-            treemeshmarker,)
-            );
-
-        // Linemesh
-        commands.spawn((PbrBundle {
-            mesh: meshes.add(line_mesh),
-
-            material: materials.add(
-                Color::rgba(16., 0., 0., 1.0),
-            ),
-            ..Default::default()
-
-            },
-            treemeshmarker,
-            RenderLayers::layer(0),
-            )
-            );
 
     // Default Spawn of Scene Spawning ///////////////////////////////////////////////////////
 
@@ -315,12 +316,12 @@ fn setup(
     // }   
 
     // Pick test sphere
-        commands.spawn(PbrBundle {
-        mesh: meshes.add(Mesh::from(Sphere { radius: 10. })),
-        material: materials.add(Color::rgb(0.8, 0.7, 0.6)),
-        transform: Transform::from_xyz(0.0, (5) as f32, 0.0),
-        ..default()
-        });
+        // commands.spawn(PbrBundle {
+        // mesh: meshes.add(Mesh::from(Sphere { radius: 10. })),
+        // material: materials.add(Color::rgb(0.8, 0.7, 0.6)),
+        // transform: Transform::from_xyz(0.0, (5) as f32, 0.0),
+        // ..default()
+        // });
 
     // // // Point light, torchlike
     // commands.spawn(PointLightBundle {
@@ -476,6 +477,10 @@ fn pick_node(
 
     // q: Query<&Camera>,
     // mut q_cam: Query<&mut Cam>,  
+
+    mut commands: Commands,
+    mut meshes: ResMut<Assets<Mesh>>,
+    mut materials: ResMut<Assets<StandardMaterial>>,
 ){
     // Camera::viewport_to_world();
         // for camera in &q_cam {
@@ -485,9 +490,28 @@ fn pick_node(
     if buttons.just_pressed(MouseButton::Left) {
 
         let mut baum = database::Tree::new();
-        baum.construct("/".to_string());
+        baum.construct("/".to_string()); // No end "/" allowed
         // println!("{:?}",baum.branch);
-        println!("{:?}",baum.siblings);
+        // for i in 0..2 {
+        //     println!("{:?}",baum.branches[i].name);
+        //     println!("{:?}",baum.branches[i].num_of_children);
+        // }
+
+        commands.spawn((PbrBundle {
+            mesh: meshes.add(baum.grow()
+        ),
+
+            material: materials.add(
+                Color::rgba(16., 0., 0., 1.0),
+            ),
+            ..Default::default()
+
+            },
+            treemeshmarker,
+            RenderLayers::layer(0),
+            )
+            );
+
 
         // Left button was pressed
         // println!("Ooioioio");
