@@ -143,40 +143,53 @@ impl Tree {
             let mut pos: Vec3 = Vec3::splat(0.);
             let mut last_pos: Vec3 = Vec3::splat(0.);
 
-            let mut rotation = Vec3::splat(1.);
+            let mut rotation = Vec3::splat(0.5);
             let mut rotation_quat :Quat = Quat::default();
             let mut translation = Vec3::splat(1.);
 
             let extening_factor = 20;
 
-            pos = branches[index].transform.transform_point(pos);
+            pos = branches[index].transform.transform_point(pos); 
+            let branch_transform = branches[index].transform;
 
             for child_index in branches[index].children.clone() {
-                println!("Collected Children: {:?} ", branches[index].children);
+                if branches.len() > child_index {
 
                 // Mat4::from_rotation_y(rotation.y) * Mat4::from_translation(translation)
+                
+                // let branch_transform = branches[child_index].transform;
+                let children = branches[index].children.clone();
+                let mut inner_child_index: usize = 0;
 
-                // let mut transform = branches[index].transform;
+                println!("\nCollected Children: {:?}, \n index: {:?} ", branches[index].children, child_index);
 
-                for i in 0..branches[index].num_of_children * extening_factor { // Number of vertices of branch
+                for i in 0..branches[child_index].num_of_children * extening_factor { // Number of vertices of branch
                     // pos.x = f32::sin(i as f32 * 0.5);
                     // pos.y = i as f32;
                     // pos.z = f32::cos(i as f32 * 0.5);
-                    let mut transform = branches[index].transform;
+                    // let mut transform = branches[index].transform;
 
-                    transform = transform * Mat4::from_rotation_y(i as f32 * 0.01) * Mat4::from_translation(translation);
+                    let transform = branch_transform * branches[child_index].transform * Mat4::from_rotation_y(i as f32 * 0.01) * Mat4::from_translation(translation);
                     pos = transform.transform_point(pos);
                    
-                    if i % extening_factor == 0 {
+                    if i % extening_factor == 0 && children[inner_child_index] < children.len(){
                         // pos.x += 10.;
                         let dir = pos - last_pos;
                         // let direction = Direction3d::new(dir).unwrap();    
                         // rotation_quat = Quat::from_rotation_arc_colinear(branches[index].transform, pos);
-                        let mut rts = Transform::from_translation(Vec3{x:0.,y:0.,z:0.});
+                        // let mut rts = Transform::from_rotation(Quat::from_rotation_z(0.1));//
+                        let mut rts = Transform::from_translation(Vec3{x:10.,y:0.,z:0.});
                         rts = rts.with_translation(pos);
-                        rts = rts.looking_to(pos, dir);
+                        rts = rts.looking_to(last_pos, dir);
                         // rts = rts.looking_at(pos*2., dir);
-                        branches[index].transform = Mat4::from_scale_rotation_translation(rts.scale, rts.rotation, rts.translation);//Mat4::from_rotation_translation(rotation_quat, dir); //* Mat4::from_rotation_x(0.1);
+                        println!("Children: {:?} \nChildIndex: {:?}, \nChild:  {:?}", children,  inner_child_index, children[inner_child_index]);
+                        println!("ChildrenLen: {:?}\ni:  {:?} \n\n", children.len(), i);
+
+                        // println!("i: {:?} \niMax: {:?}",i, branches[index].num_of_children * extening_factor);
+                        branches[children[inner_child_index]].transform = Mat4::from_scale_rotation_translation(rts.scale, rts.rotation, rts.translation);
+                        inner_child_index += 1;
+                        
+                        // branches[index].transform = Mat4::from_scale_rotation_translation(rts.scale, rts.rotation, rts.translation);//Mat4::from_rotation_translation(rotation_quat, dir); //* Mat4::from_rotation_x(0.1);
                     }
                    
                     line_vertices.push(last_pos);
@@ -185,6 +198,7 @@ impl Tree {
                 }
                 dive(child_index, branches, line_vertices);
             }
+        }
         }
             // dive(depth, branches);
     }
