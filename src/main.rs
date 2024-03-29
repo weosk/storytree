@@ -490,7 +490,9 @@ fn pick_node(
     if buttons.just_pressed(MouseButton::Left) {
 
         let mut baum = database::Tree::new();
-        baum.construct("/".to_string()); // No end "/" allowed
+        // baum.construct("./TestTree/Tree".to_string()); // No end "/" allowed
+        baum.construct("/sys".to_string()); // No end "/" allowed
+
         // println!("{:?}",baum.branch);
         // for i in 0..2 {
         //     println!("{:?}",baum.branches[i].name);
@@ -500,7 +502,6 @@ fn pick_node(
         commands.spawn((PbrBundle {
             mesh: meshes.add(baum.grow()
         ),
-
             material: materials.add(
                 Color::rgba(16., 0., 0., 1.0),
             ),
@@ -512,6 +513,20 @@ fn pick_node(
             )
             );
 
+            commands.spawn((PbrBundle {
+                mesh: meshes.add(baum.mesh_nodes()
+            ),
+                material: materials.add(
+                    Color::rgba(0.8, 0.4, 0.3, 1.0),
+                ),
+                ..Default::default()
+    
+                },
+                treemeshmarker,
+                RenderLayers::layer(0),
+                )
+                );
+    
 
         // Left button was pressed
         // println!("Ooioioio");

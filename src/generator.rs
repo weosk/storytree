@@ -392,7 +392,7 @@ fn extend_text_vec(vertices: &mut Vec<f32>, generator: &mut MeshGenerator<Face>,
 }
 
 // Creates the dodecas
-fn extend_space_vec(space_vertices: &mut Vec<[f32; 3]>, space_indices: &mut Vec<u32>, transform: &Mat4, cnt: f32){
+pub fn extend_space_vec(space_vertices: &mut Vec<[f32; 3]>, space_indices: &mut Vec<u32>, transform: &Mat4, cnt: f32){
     let PHI: f32 = 1.618033989; 
     let ground_vertices: [[f32; 3]; 20] =   
     [   [  0.,      -1./PHI,  -PHI ], // 0
