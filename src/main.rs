@@ -481,6 +481,8 @@ fn pick_node(
     mut commands: Commands,
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<StandardMaterial>>,
+
+    mut tree_data: Option<ResMut<database::Tree>>,
 ){
     // Camera::viewport_to_world();
         // for camera in &q_cam {
@@ -491,7 +493,9 @@ fn pick_node(
 
         let mut baum = database::Tree::new();
         // baum.construct("./TestTree/Tree".to_string()); // No end "/" allowed
-        baum.construct("/sys".to_string()); // No end "/" allowed
+        baum.construct("/home/nom/code/rust/storytree".to_string()); // No end "/" allowed
+        // baum.construct("/home/nom/z/cata01_02".to_string()); // No end "/" allowed
+        // baum.construct("/".to_string()); // No end "/" allowed
 
         // println!("{:?}",baum.branch);
         // for i in 0..2 {
@@ -513,20 +517,32 @@ fn pick_node(
             )
             );
 
-            commands.spawn((PbrBundle {
-                mesh: meshes.add(baum.mesh_nodes()
+        // Dodecas
+        commands.spawn((PbrBundle {
+            mesh: meshes.add(baum.mesh_nodes()
+        ),
+            material: materials.add(
+                Color::rgba(0.8, 0.4, 0.3, 1.0),
             ),
-                material: materials.add(
-                    Color::rgba(0.8, 0.4, 0.3, 1.0),
-                ),
-                ..Default::default()
+            ..Default::default()
+
+            },
+            treemeshmarker,
+            RenderLayers::layer(0),
+            )
+            );
     
-                },
-                treemeshmarker,
-                RenderLayers::layer(0),
-                )
-                );
-    
+            commands.insert_resource(baum.clone());
+
+            // for branch in baum.bounds.clone().into_iter(){
+            //     println!("akadadada {:?}", branch.center);
+            //     commands.spawn(PbrBundle {
+            //     mesh: meshes.add(Mesh::from(bevy::math::primitives::Sphere { radius: branch.sphere.radius })),
+            //     material: materials.add(Color::rgb(0.8, 0.7, 0.6)),
+            //     transform: Transform::from_xyz(  branch.center.x, branch.center.y, branch.center.z ),
+            //     ..default()
+            //     });
+            // }
 
         // Left button was pressed
         // println!("Ooioioio");
@@ -542,11 +558,27 @@ fn pick_node(
         // for (mut mesh, cube) in &mut meshes {
         
         // }
-        
+    }   
+    if buttons.pressed(MouseButton::Right) {
+        if let Some(tree_data) = &mut tree_data {
+
+            for branch in tree_data.bounds.clone().into_iter(){
+                println!("akadadada {:?}", branch.center);
+                commands.spawn((PbrBundle {
+                mesh: meshes.add(Mesh::from(bevy::math::primitives::Sphere { radius: branch.sphere.radius })),
+                material: materials.add(Color::rgb(0.8, 0.7, 0.6)),
+                transform: Transform::from_xyz(  branch.center.x, branch.center.y, branch.center.z ),
+                ..default()
+                },
+                treemeshmarker));
+            
+            }
+        }
     }
-    if buttons.just_released(MouseButton::Left) {
-        // Left Button was released
-    }
+    
+    // if buttons.just_released(MouseButton::Left) {
+    //     // Left Button was released
+    // }
     if buttons.pressed(MouseButton::Right) {
         // Right Button is being held down
     }
