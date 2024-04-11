@@ -4,8 +4,7 @@ use std::{env, f32::consts::PI, fs, iter::Map};
 
 use bevy::{
     input::{keyboard::KeyCode, mouse::{MouseButtonInput, MouseMotion, MouseWheel}},
-    math::*, pbr::{extract_meshes, wireframe::WireframeConfig}, 
-    math::primitives::Sphere,
+    math::{bounding::{BoundingSphereCast, BoundingVolume, IntersectsVolume, RayCast3d}, primitives::Sphere, *}, pbr::{extract_meshes, wireframe::WireframeConfig}, 
     prelude::*,
     render::{camera::ScalingMode, mesh::{self, Indices, PrimitiveTopology}, render_resource::{AsBindGroup, ShaderRef}, view::RenderLayers}
 };
@@ -36,8 +35,12 @@ struct Cam
 }
 
 #[derive(Component)]
-struct treemeshmarker;
+struct TreeMeshMarker;
 // struct linemeshmarker;
+
+#[derive(Component)]
+struct DisplayPathText;
+
 
 fn main() {
     //env::set_var("RUST_BACKTRACE", "1");
@@ -47,7 +50,6 @@ fn main() {
         .insert_resource(ClearColor(Color::rgb(0.01, 0.01, 0.1))) // Background 2 Darkblu
         .add_systems(Startup, setup)
         .add_systems(Update, (bevy::window::close_on_esc, process_inputs_system, animate_light_direction, update_scale, pick_node))
-
         .insert_resource(AmbientLight {
             color: Color::Rgba {
                 red: 0.95,
@@ -214,6 +216,7 @@ fn setup(
     mut materials: ResMut<Assets<StandardMaterial>>,
 
     asset_server: Res<AssetServer>,
+    window: Query<&Window>,
 ) {
 
     // Mesh Transmutation Experiment Spawning ///////////////////////////////////////////////////////
@@ -243,7 +246,7 @@ fn setup(
     //     transform: Transform::from_scale(Vec3{x:scalef,y:scalef,z:scalef}),
     //     ..default()
     //     },
-    //     treemeshmarker,)
+    //     TreeMeshMarker,)
     //     );
 
     // // Spacemesh
@@ -257,7 +260,7 @@ fn setup(
     //     transform: Transform::from_scale(Vec3{x:scalef,y:scalef,z:scalef}),
     //     ..default()
     //     },
-    //     treemeshmarker,)
+    //     TreeMeshMarker,)
     //     );
 
     // // Linemesh
@@ -270,7 +273,7 @@ fn setup(
     //     ..Default::default()
 
     //     },
-    //     treemeshmarker,
+    //     TreeMeshMarker,
     //     RenderLayers::layer(0),
     //     )
     //     );
@@ -289,7 +292,7 @@ fn setup(
     //     transform: Transform::from_scale(Vec3{x:scalef,y:scalef,z:scalef}),
     //     ..default()
     //     },
-    //     treemeshmarker,)
+    //     TreeMeshMarker,)
     //     );
 
 
@@ -341,6 +344,53 @@ fn setup(
     //     ..default()
     // });
 
+    // DisplayTextBundle
+    commands.spawn((
+        // Create a TextBundle that has a Text with a single section.
+        TextBundle::from_section(
+            // Accepts a `String` or any type that converts into a `String`, such as `&str`
+            "_",
+            TextStyle {
+                // This font is loaded and will be used instead of the default font.
+                font: asset_server.load("fonts/Roboto-Regular.ttf"),
+                font_size: 20.0,
+                ..default()
+            },
+        ) // Set the justification of the Text
+        .with_text_justify(JustifyText::Center)
+        // Set the style of the TextBundle itself.
+        .with_style(Style {
+            position_type: PositionType::Absolute,
+            bottom: Val::Px(5.0),
+            left: Val::Px(5.0),
+            ..default()
+        }),
+        DisplayPathText
+    )); 
+
+    commands.spawn((
+        // Create a TextBundle that has a Text with a single section.
+        TextBundle::from_section(
+            // Accepts a `String` or any type that converts into a `String`, such as `&str`
+            "^",
+            TextStyle {
+                // This font is loaded and will be used instead of the default font.
+                font: asset_server.load("fonts/Roboto-Regular.ttf"),
+                font_size: 20.0,
+                color: Color::rgba(0.7,0.6,0.6,0.5),
+                ..default()
+            },
+        ) // Set the justification of the Text
+        .with_text_justify(JustifyText::Center)
+        // Set the style of the TextBundle itself.
+        .with_style(Style {
+            position_type: PositionType::Absolute,
+            top: Val::Px(window.single().resolution.height()/2.),
+            left: Val::Px(window.single().resolution.width()/2.),
+            ..default()
+        }),
+    )); 
+
     // Directional Light, Sunlike
     commands.spawn((DirectionalLightBundle {
         directional_light: DirectionalLight {
@@ -357,8 +407,7 @@ fn setup(
         ..default()
     },
     // RenderLayers::all(),)
-)
-);
+    ));
 
     let x = 1.0;
     let y = 1.0;
@@ -414,10 +463,18 @@ fn animate_light_direction(
 
 fn update_scale(
     keys: Res<ButtonInput<KeyCode>>,
-    mut tree: Query<(&mut Transform, &treemeshmarker)>,
-    mut q_cam: Query<&mut Cam>
-)
+    mut tree: Query<(&mut Transform, &TreeMeshMarker)>,
+    mut q_cam: Query<&mut Cam>,
 
+    // mut tree_bounds_data: Option<ResMut<&mut database::Tree>>,
+    // mut tree_bounds_data: Query<&mut database::Tree>,
+    // mut tree_data: Option<&mut ResMut<database::Tree>>,
+    mut tree_data: Option<ResMut<database::Tree>>,
+    mut commands: Commands,
+    mut meshes: ResMut<Assets<Mesh>>,
+    mut materials: ResMut<Assets<StandardMaterial>>,
+
+)
 {
     let mut cam = q_cam.single_mut();
 
@@ -428,24 +485,80 @@ fn update_scale(
             transform.scale *= Vec3{x: 0.9,y:0.9,z: 0.9};
             
             // transform.rotate(Quat::from_rotation_y(0.05));
-            // transform.translation += Vec3{x: 0.,y:0.,z: 0.};            
+            // transform.translation += Vec3{x: 0.,y:0.,z: 0.};     
+
+
+            // if let Some(&mut tree_data) = &mut tree_bounds_data {
+                // for (i, mut branch ) in tree_data.bounds.into_iter().enumerate(){
+                //     branch.center *= transform.scale.y;
+                // }
+            // }
+            // if let Some(tree_data_) = tree_data.as_ref(){
+            // for i in 0..tree_data_.bounds.len() - 1 {
+            //     tree_data_.as_mut().bounds[i].center *= transform.scale.y;
+            //     tree_data_.as_mut().bounds[i].sphere.radius *= transform.scale.y;
+            // }
+            // }
+
         }
     }
 
+    if keys.just_released(KeyCode::Digit1) {
+        for (transform, cube) in &mut tree {
+        if let Some(tree_data) = &mut tree_data {
+            println!("Radius: {:?}", tree_data.bounds[2].sphere.radius);
+
+            for i in 0..tree_data.bounds.len(){
+                tree_data.bounds[i].center = tree_data.branches[i].transform.transform_point(Vec3::splat(0.));
+                tree_data.bounds[i].center *= transform.scale;
+                tree_data.bounds[i].sphere.radius = transform.scale.y + transform.scale.y*0.2;
+
+                // commands.spawn(PbrBundle {
+                //     mesh: meshes.add(Mesh::from(bevy::math::primitives::Cuboid { half_size: Vec3::splat(tree_data.bounds[i].sphere.radius) })),
+                //     material: materials.add(Color::rgb(0.8, 0.7, 0.6)),
+                //     transform: Transform::from_xyz(  tree_data.bounds[i].center.x, tree_data.bounds[i].center.y, tree_data.bounds[i].center.z ),
+                //     ..default()
+                //     },);
+            
+            }
+            
+
+            // for branch in tree_data.bounds.clone().into_iter(){
+            //     // println!("akadadada {:?}", branch.center);
+            //     commands.spawn((PbrBundle {
+            //     mesh: meshes.add(Mesh::from(bevy::math::primitives::Sphere { radius: branch.sphere.radius })),
+            //     material: materials.add(Color::rgb(0.8, 0.7, 0.6)),
+            //     transform: Transform::from_xyz(  branch.center.x, branch.center.y, branch.center.z ),
+            //     ..default()
+            //     },
+            //     TreeMeshMarker));
+            }
+        }
+    }
+    
+    
+    
     if keys.pressed(KeyCode::Digit2) {
         for (mut transform, cube) in &mut tree {
-
             // transform.translation = -cam.pos * transform.scale;
             transform.scale *= Vec3{x: 1.1,y:1.1,z: 1.1};
         }
     }
-    // if keys.just_released(KeyCode::Key2) {
-    //     for (mut transform, cube) in &mut tree {
 
-    //         // transform.translation = - cam.pos * transform.scale;
+    if keys.just_released(KeyCode::Digit2) {
+        for (transform, cube) in &mut tree {
+        if let Some(tree_data) = &mut tree_data {
+            for i in 0..tree_data.bounds.len(){
+                tree_data.bounds[i].center = tree_data.branches[i].transform.transform_point(Vec3::splat(0.));
+                tree_data.bounds[i].center *= transform.scale;
+                tree_data.bounds[i].sphere.radius = transform.scale.y + transform.scale.y*0.2;
 
-    //     }
-    // }
+                
+                }
+                }
+            }
+        }
+
 
     // Fine scale
     if keys.pressed(KeyCode::Digit3) {
@@ -473,36 +586,45 @@ fn update_scale(
 fn pick_node(
     buttons: Res<ButtonInput<MouseButton>>,
     // mut meshes: ResMut<Assets<Mesh>>,
-    // mut tree: Query<(&mut Mesh, &treemeshmarker)>,
+    // mut tree: Query<(&mut Mesh, &TreeMeshMarker)>,
 
     // q: Query<&Camera>,
-    // mut q_cam: Query<&mut Cam>,  
+    mut q_cam: Query<&mut Cam>,  
+    // mut cam_transform: Query<&mut Transform, With<Cam>>,
+    // mut q_pp: Query<&mut Camera, With<Cam>>,
+    q_camera: Query<(&Camera, &GlobalTransform), With<Cam>>,
+    q_window: Query<&Window>,
+    asset_server: Res<AssetServer>,
+    mut display_text_query: Query<&mut Text, With<DisplayPathText>>,
+
+
 
     mut commands: Commands,
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<StandardMaterial>>,
 
     mut tree_data: Option<ResMut<database::Tree>>,
+    mut tree_transform: Query<(&mut Transform, &TreeMeshMarker)>,
+
 ){
-    // Camera::viewport_to_world();
-        // for camera in &q_cam {
-            // camera.viewport_to_world(camera.clear_color), viewport_position)
-        // } 
+
+
 
     if buttons.just_pressed(MouseButton::Left) {
 
         let mut baum = database::Tree::new();
         // baum.construct("./TestTree/Tree".to_string()); // No end "/" allowed
-        baum.construct("/home/nom/code/rust/storytree".to_string()); // No end "/" allowed
+        // baum.construct("/home/nom/code/rust/storytree".to_string()); // No end "/" allowed
         // baum.construct("/home/nom/z/cata01_02".to_string()); // No end "/" allowed
-        // baum.construct("/".to_string()); // No end "/" allowed
+        // baum.construct("/sys".to_string()); // No end "/" allowed
+        baum.construct("/".to_string()); // No end "/" allowed
 
         // println!("{:?}",baum.branch);
-        // for i in 0..2 {
+        // for i in 0..2 f{
         //     println!("{:?}",baum.branches[i].name);
         //     println!("{:?}",baum.branches[i].num_of_children);
         // }
-
+        
         commands.spawn((PbrBundle {
             mesh: meshes.add(baum.grow()
         ),
@@ -512,7 +634,7 @@ fn pick_node(
             ..Default::default()
 
             },
-            treemeshmarker,
+            TreeMeshMarker,
             RenderLayers::layer(0),
             )
             );
@@ -527,22 +649,30 @@ fn pick_node(
             ..Default::default()
 
             },
-            treemeshmarker,
+            TreeMeshMarker,
             RenderLayers::layer(0),
             )
             );
     
             commands.insert_resource(baum.clone());
 
-            // for branch in baum.bounds.clone().into_iter(){
-            //     println!("akadadada {:?}", branch.center);
-            //     commands.spawn(PbrBundle {
-            //     mesh: meshes.add(Mesh::from(bevy::math::primitives::Sphere { radius: branch.sphere.radius })),
-            //     material: materials.add(Color::rgb(0.8, 0.7, 0.6)),
-            //     transform: Transform::from_xyz(  branch.center.x, branch.center.y, branch.center.z ),
-            //     ..default()
-            //     });
-            // }
+        // Bounds drawing
+        // if let Some(tree_data) = &mut tree_data {
+
+        //     for branch in tree_data.bounds.clone().into_iter(){
+        //         // println!("akadadada {:?}", branch.center);
+        //         commands.spawn((PbrBundle {
+        //         mesh: meshes.add(Mesh::from(bevy::math::primitives::Sphere { radius: branch.sphere.radius })),
+        //         material: materials.add(Color::rgb(0.8, 0.7, 0.6)),
+        //         transform: Transform::from_xyz(  branch.center.x, branch.center.y, branch.center.z ),
+        //         ..default()
+        //         },
+        //         TreeMeshMarker));
+        //     }
+        // }
+        
+
+
 
         // Left button was pressed
         // println!("Ooioioio");
@@ -559,19 +689,37 @@ fn pick_node(
         
         // }
     }   
-    if buttons.pressed(MouseButton::Right) {
-        if let Some(tree_data) = &mut tree_data {
 
-            for branch in tree_data.bounds.clone().into_iter(){
-                println!("akadadada {:?}", branch.center);
-                commands.spawn((PbrBundle {
-                mesh: meshes.add(Mesh::from(bevy::math::primitives::Sphere { radius: branch.sphere.radius })),
-                material: materials.add(Color::rgb(0.8, 0.7, 0.6)),
-                transform: Transform::from_xyz(  branch.center.x, branch.center.y, branch.center.z ),
-                ..default()
-                },
-                treemeshmarker));
-            
+    if buttons.just_released(MouseButton::Right) {
+        let window = q_window.single();
+        let (camera, camera_transform) = q_camera.single();
+    
+        for (transform, marker) in &mut tree_transform {
+            if let Some(cam_ray) = window
+                .cursor_position()
+                .and_then(|cursor| camera.viewport_to_world(camera_transform, Vec2::new( window.resolution.width()/2., window.resolution.height()/2.))) //cursor))
+                // .and_then(|cursor| camera.viewport_to_world(&camera_transform.mul_transform(Transform::from_scale(Vec3::splat(1./transform.scale.y))), Vec2::new( window.resolution.width()/2., window.resolution.height()/2.))) //cursor))
+            {
+                // eprintln!("World coords: {}/{:?}", world_position.origin, world_position.direction);
+
+                if let Some(tree_data) = &mut tree_data {
+                    let ray_cast = RayCast3d::from_ray(cam_ray, 10000.);
+
+                    for (i, branch, ) in tree_data.bounds.clone().into_iter().enumerate(){
+                        let cast_result = ray_cast.intersects(&branch);//BoundingSphereCast::from_ray(branch, world_position, 10000.);
+                        if cast_result == true {
+                            
+                            println!("#{} CastResult: {:?} Path: {:?}", i, cast_result, tree_data.branches[i].name);
+
+                            let mut text = display_text_query.single_mut();
+                            text.as_mut().sections[0].value = tree_data.branches[i].name.clone();
+                            
+                        }
+                    }
+                    println!("Closed \n");
+
+                }
+
             }
         }
     }

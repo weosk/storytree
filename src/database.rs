@@ -159,7 +159,7 @@ impl Tree {
             // Populate bounds
             self.bounds[cnt].sphere = primitives::Sphere{ radius: branch.transform.scale.y };//branch.transform.scale;
             self.bounds[cnt].center = branch.transform.compute_matrix().transform_point(Vec3::splat(0.));
-            println!("Bounds: {:?}, {:?}", self.bounds[cnt].center, self.bounds[cnt].sphere);
+            // println!("Bounds: {:?}, {:?}", self.bounds[cnt].center, self.bounds[cnt].sphere);
 
 
             // println!("Transform: {:?}", branch.transform);
@@ -214,16 +214,18 @@ impl Tree {
                 
                 // Place Transform
                 if i % extending_factor == extending_factor - 1 {
-                    let dir = pos - last_pos;
-                    let mut rts = spiral_transform;
+                    if branches.len() > children[inner_child_index] { // To prevent len == index for /
+                        let dir = pos - last_pos;
+                        let mut rts = spiral_transform;
 
-                    rts.look_to(dir.any_orthonormal_vector(), dir);
-                    // rts.rotate_y(PI);
-                    rts = rts.with_translation(pos);
-                    rts = rts.with_scale(Vec3::splat(3.-(0.5*branches[index].depth as f32)));
-                    // rts = rts.with_scale(Vec3::splat(10.));
-                    branches[children[inner_child_index]].transform = rts;
-                    inner_child_index += 1;
+                        rts.look_to(dir.any_orthonormal_vector(), dir);
+                        // rts.rotate_y(PI);
+                        rts = rts.with_translation(pos);
+                        rts = rts.with_scale(Vec3::splat(3.-(0.5*branches[index].depth as f32)));
+                        // rts = rts.with_scale(Vec3::splat(10.));
+                        branches[children[inner_child_index]].transform = rts;
+                        inner_child_index += 1;
+                    }
                 }
                     line_vertices.push(last_pos);
                     line_vertices.push(pos);
