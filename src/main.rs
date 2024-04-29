@@ -4,7 +4,7 @@ use std::{env, f32::consts::PI, fs, iter::Map};
 
 use bevy::{
     input::{keyboard::KeyCode, mouse::{MouseButtonInput, MouseMotion, MouseWheel}},
-    math::{bounding::{BoundingSphereCast, BoundingVolume, IntersectsVolume, RayCast3d}, primitives::Sphere, *}, pbr::{extract_meshes, wireframe::WireframeConfig}, 
+    math::{bounding::{BoundingSphere, BoundingSphereCast, BoundingVolume, IntersectsVolume, RayCast3d}, primitives::Sphere, *}, pbr::{extract_meshes, wireframe::WireframeConfig}, 
     prelude::*,
     render::{camera::ScalingMode, mesh::{self, Indices, PrimitiveTopology}, render_resource::{AsBindGroup, ShaderRef}, view::RenderLayers}
 };
@@ -230,8 +230,8 @@ fn setup(
     // (text_mesh, space_mesh, line_mesh) = generator::walk_path_to_mesh("/home/nom/z/cataclysmdda-0.I/data", generator::GenerationType::Branch, 10, true, true);
     // (text_mesh, space_mesh, line_mesh) = generator::walk_path_to_mesh("/run", generator::GenerationType::Branch, 20, true, true);
     // (text_mesh, space_mesh, line_mesh) = generator::walk_path_to_mesh("./TestTree", generator::GenerationType::Branch, 20, true, true);
-    (text_mesh, space_mesh, line_mesh) = generator::walk_path_to_mesh("/", generator::GenerationType::Branch, 100, false, false);
-
+    (text_mesh, space_mesh, line_mesh) = generator::walk_path_to_mesh("/sys", generator::GenerationType::Branch, 100, false, false);
+    
     // // Textmesh
     // let scalef = 1.; 
     // commands.spawn((PbrBundle {
@@ -294,7 +294,6 @@ fn setup(
     //     },
     //     TreeMeshMarker,)
     //     );
-
 
     // Default Spawn of Scene Spawning ///////////////////////////////////////////////////////
 
@@ -610,14 +609,16 @@ fn pick_node(
 
 
 
-    if buttons.just_pressed(MouseButton::Left) {
+    if buttons.just_released(MouseButton::Right) {
 
         let mut baum = database::Tree::new();
         // baum.construct("./TestTree/Tree".to_string()); // No end "/" allowed
         // baum.construct("/home/nom/code/rust/storytree".to_string()); // No end "/" allowed
         // baum.construct("/home/nom/z/cata01_02".to_string()); // No end "/" allowed
         // baum.construct("/sys".to_string()); // No end "/" allowed
-        baum.construct("/".to_string()); // No end "/" allowed
+        // baum.construct("/".to_string()); // No end "/" allowed
+        baum.construct("/sys".to_string()); // No end "/" allowed
+
 
         // println!("{:?}",baum.branch);
         // for i in 0..2 f{
@@ -686,40 +687,60 @@ fn pick_node(
         //     pub direction: Direction3d,
         // }
         // for (mut mesh, cube) in &mut meshes {
-        
+
         // }
     }   
 
-    if buttons.just_released(MouseButton::Right) {
+    if buttons.just_released(MouseButton::Left) {
         let window = q_window.single();
         let (camera, camera_transform) = q_camera.single();
-    
-        for (transform, marker) in &mut tree_transform {
-            if let Some(cam_ray) = window
-                .cursor_position()
-                .and_then(|cursor| camera.viewport_to_world(camera_transform, Vec2::new( window.resolution.width()/2., window.resolution.height()/2.))) //cursor))
-                // .and_then(|cursor| camera.viewport_to_world(&camera_transform.mul_transform(Transform::from_scale(Vec3::splat(1./transform.scale.y))), Vec2::new( window.resolution.width()/2., window.resolution.height()/2.))) //cursor))
-            {
-                // eprintln!("World coords: {}/{:?}", world_position.origin, world_position.direction);
+        
+        if false {
+            for (transform, marker) in &mut tree_transform {
+                if let Some(cam_ray) = window
+                    .cursor_position()
+                    // .and_then(|cursor| camera.viewport_to_world(camera_transform, Vec2::new( window.resolution.width()/2., window.resolution.height()/2.))) //cursor))
+                    .and_then(|cursor| camera.viewport_to_world(camera_transform, cursor))
 
-                if let Some(tree_data) = &mut tree_data {
-                    let ray_cast = RayCast3d::from_ray(cam_ray, 10000.);
+                    // .and_then(|cursor| camera.viewport_to_world(&camera_transform.mul_transform(Transform::from_scale(Vec3::splat(1./transform.scale.y))), Vec2::new( window.resolution.width()/2., window.resolution.height()/2.))) //cursor))
+                {
+                    // eprintln!("World coords: {}/{:?}", world_position.origin, world_position.direction);
 
-                    for (i, branch, ) in tree_data.bounds.clone().into_iter().enumerate(){
-                        let cast_result = ray_cast.intersects(&branch);//BoundingSphereCast::from_ray(branch, world_position, 10000.);
-                        if cast_result == true {
-                            
-                            println!("#{} CastResult: {:?} Path: {:?}", i, cast_result, tree_data.branches[i].name);
+                    if let Some(tree_data) = &mut tree_data {
+                        let ray_cast = RayCast3d::from_ray(cam_ray, 10000.);
 
-                            let mut text = display_text_query.single_mut();
-                            text.as_mut().sections[0].value = tree_data.branches[i].name.clone();
-                            
+                        for (i, branch, ) in tree_data.bounds.clone().into_iter().enumerate(){
+                            let cast_result = ray_cast.intersects(&branch);//BoundingSphereCast::from_ray(branch, world_position, 10000.);
+                            if cast_result == true {
+                                
+                                println!("#{} CastResult: {:?} Path: {:?}", i, cast_result, tree_data.branches[i].name);
+
+                                let mut text = display_text_query.single_mut();
+                                text.as_mut().sections[0].value = tree_data.branches[i].name.clone();
+                                
+                            }
                         }
+                        println!("Closed \n");
                     }
-                    println!("Closed \n");
-
                 }
+            }
+        }
+        else {
+            if let Some(tree_data) = &mut tree_data {
+                // let ray_cast = RayCast3d::from_ray(cam_ray, 10000.);
+                let bound_sphere = BoundingSphere::new(camera_transform.transform_point(Vec3::splat(0.)), 100.0);
+                for (i, branch, ) in tree_data.bounds.clone().into_iter().enumerate(){
+                    let cast_result = bound_sphere.intersects(&branch);//BoundingSphereCast::from_ray(branch, world_position, 10000.);
+                    if cast_result == true {
 
+                        println!("#{} CastResult: {:?} Path: {:?}", i, cast_result, tree_data.branches[i].name);
+
+                        let mut text = display_text_query.single_mut();
+                        text.as_mut().sections[0].value = tree_data.branches[i].name.clone();
+                        
+                    }
+                }
+                println!("Closed \n");
             }
         }
     }

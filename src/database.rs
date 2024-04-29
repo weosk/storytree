@@ -92,13 +92,13 @@ impl Tree {
                 match self.hash_map.get(&get_parent_path(&entry.path().to_str().unwrap().to_string())) {
                     None => println!("No Parent! Path: {:?}, GivenPath: {:?}", &get_parent_path(&entry.path().to_str().unwrap().to_string()),&entry.path().to_str().unwrap().to_string()),
                     Some(index) => {
-                        println!("Parentpath: {:?}, Name: {:?}", index, &entry.path().to_str().unwrap().to_string());
+                        // println!("Parentpath: {:?}, Name: {:?}", index, &entry.path().to_str().unwrap().to_string());
                         self.branches.get_mut(*index).unwrap().children.push(id_index);
                     },
                 }
 
                 // println!("Values: {:?}", self.hash_map.keys());
-                println!("Id_index: {:?}", id_index);
+                // println!("Id_index: {:?}", id_index);
 
                 // Fill bounds with spheres
                 self.bounds.push(BoundingSphere { center: Vec3::splat(0.), sphere: primitives::Sphere{ radius: 1.0 }});
@@ -115,7 +115,6 @@ impl Tree {
         }
     }
     
-
     pub fn grow(&mut self) -> Mesh {
 
         let mut line_mesh : Mesh = Mesh::new(PrimitiveTopology::LineList, RenderAssetUsages::default());
@@ -161,7 +160,6 @@ impl Tree {
             self.bounds[cnt].center = branch.transform.compute_matrix().transform_point(Vec3::splat(0.));
             // println!("Bounds: {:?}, {:?}", self.bounds[cnt].center, self.bounds[cnt].sphere);
 
-
             // println!("Transform: {:?}", branch.transform);
         }
 
@@ -199,7 +197,7 @@ impl Tree {
             spiral_transform.translation.y = 1.;
             spiral_transform.translation.z = 0.333;
             spiral_transform.rotate_y(PI/16.);
-
+            
             println!(" Path:{:?}\n Index: {:?}\n ChildrenLen:{:?}\n Children:{:?}\n\n",branches[index].name, index, branches[index].children.len(), branches[index].children );
 
             for i in 0..(branches[index].children.len() as i32 * extending_factor) - 0 { // Number of vertices of branch
