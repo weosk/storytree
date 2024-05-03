@@ -37,7 +37,7 @@ fn main() {
         .add_plugins(DefaultPlugins)
         .insert_resource(ClearColor(Color::rgb(0.01, 0.01, 0.21))) // Background 2 Darkblu
         .add_systems(Startup, setup)
-        .add_systems(Update, (bevy::window::close_on_esc, process_inputs_system, animate_light_direction, update_scale, pick_node))
+        .add_systems(Update, (bevy::window::close_on_esc, process_inputs_system, animate_light_direction))
         .insert_resource(AmbientLight {
             color: Color::Rgba {
                 red: 0.95,
@@ -206,18 +206,23 @@ fn setup(
     
 }
 
-
-/// This system prints out all mouse events as they come in
 fn process_inputs_system(
+    // Cam_Control
     keys: Res<ButtonInput<KeyCode>>,
     mut q_transform: Query<&mut Transform, With<Cam>>,
     mut q_cam: Query<&mut Cam>,  
     mut mouse_motion_events: EventReader<MouseMotion>,
     mut q_pp: Query<&mut Projection, With<Cam>>,
 
-    // mut mouse_button_input_events: EventReader<MouseButtonInput>,
-    // mut cursor_moved_events: EventReader<CursorMoved>,
-    // mut mouse_wheel_events: EventReader<MouseWheel>,
+    // Update_Scale
+    mut tree: Query<(&mut Transform, &TreeMeshMarker), Without<Cam>>,
+    mut tree_data: Option<ResMut<database::Tree>>,
+
+    // Node_Picking
+    buttons: Res<ButtonInput<MouseButton>>,
+    q_camera: Query<(&Camera, &GlobalTransform), With<Cam>>,
+    q_window: Query<&Window>,
+    mut display_text_query: Query<&mut Text, With<DisplayPathText>>,
 ) {
 
     // Single Instance to avoid iterating queue
@@ -332,56 +337,8 @@ fn process_inputs_system(
         }
     }
 
-    // for event in mouse_button_input_events.iter() {
-    //     info!("{:?}", event);
-    // }        
 
-    // for event in cursor_moved_events.iter() {
-    //     info!("{:?}", event);
-    // }
-
-    // for event in mouse_wheel_events.iter() {
-    //     info!("{:?}", event);
-    // }
-    //println!("cnt: {}",cnt);
-}
-
-// --- // --- // Utils \\ --- \\ --- \\
-
-fn count_entities(all_entities: Query<()>) {
-    dbg!(all_entities.iter().count());
-}
-
-fn print_typename<T>(_: &T) {
-    println!("{}", std::any::type_name::<T>())
-}
-
-fn animate_light_direction(
-    time: Res<Time>,
-    mut query: Query<&mut Transform, With<DirectionalLight>>,
-    mut q_cam: Query<&mut Cam>, 
-) {
-    // println!("Cam: {:?}", q_cam.single_mut().pos);
-    for mut transform in &mut query {
-        // *transform = Transform::from_rotation(q_cam.single_mut().rot) * Transform::from_xyz(0.0, q_cam.single_mut().pos.y+0.0, 0.0);
-        //transform.rotate_y(time.delta_seconds() * 0.5);
-    }
-}
-
-fn update_scale(
-    keys: Res<ButtonInput<KeyCode>>,
-    mut tree: Query<(&mut Transform, &TreeMeshMarker)>,
-    mut q_cam: Query<&mut Cam>,
-
-    mut tree_data: Option<ResMut<database::Tree>>,
-    mut commands: Commands,
-    mut meshes: ResMut<Assets<Mesh>>,
-    mut materials: ResMut<Assets<StandardMaterial>>,
-)
-{
-    let mut cam = q_cam.single_mut();
-
-    // Scale 
+    // Update_Scale 
     if keys.pressed(KeyCode::Digit1) {
         for (mut transform, cube) in &mut tree {
             transform.scale *= Vec3{x: 0.9,y:0.9,z: 0.9};
@@ -420,90 +377,13 @@ fn update_scale(
             }
         }
 
-    // Fine scale
-    if keys.pressed(KeyCode::Digit3) {
-        for (mut transform, cube) in &mut tree {
-            transform.scale *= Vec3{x: 0.99,y:0.99,z: 0.99};
-        }
-    }
-    if keys.pressed(KeyCode::Digit4) {
-        for (mut transform, cube) in &mut tree {
-            transform.scale *= Vec3{x: 1.01,y:1.01,z: 1.01};
-        }
-    }
-
-    if keys.pressed(KeyCode::Digit5) {
-        for (mut transform, cube) in &mut tree {
-            transform.rotate(Quat::from_rotation_y(0.05));
-            // transform.translate_around(Vec3{x: 0.,y:20.,z: -20.}, Quat::from_rotation_y(0.1));
-            // transform.translate_around(Vec3{x: 0.,y:20.,z: -20.}, Quat::from_rotation_y(0.1));
-        }
-    }
-}
-
-fn pick_node(
-    buttons: Res<ButtonInput<MouseButton>>,
-    mut q_cam: Query<&mut Cam>,  
-
-    q_camera: Query<(&Camera, &GlobalTransform), With<Cam>>,
-    q_window: Query<&Window>,
-    asset_server: Res<AssetServer>,
-    mut display_text_query: Query<&mut Text, With<DisplayPathText>>,
-
-    mut commands: Commands,
-    mut meshes: ResMut<Assets<Mesh>>,
-    mut materials: ResMut<Assets<StandardMaterial>>,
-
-    mut tree_data: Option<ResMut<database::Tree>>,
-    mut tree_transform: Query<(&mut Transform, &TreeMeshMarker)>,
-
-){
-    // Move into setup or regrow?
-    if buttons.just_released(MouseButton::Right) {
-
-        // let mut main_tree = database::Tree::new();
-        // // main_tree.construct("./TestTree/Tree".to_string()); // No end "/" allowed
-        // // main_tree.construct("/home/nom/code/rust/storytree".to_string()); // No end "/" allowed
-        // main_tree.construct("/home/nom/z/cata01_02".to_string()); // No end "/" allowed
-        
-        // commands.spawn((PbrBundle {
-        //     mesh: meshes.add(main_tree.grow()
-        // ),
-        //     material: materials.add(
-        //         Color::rgba(16., 0., 0., 1.0),
-        //     ),
-        //     ..Default::default()
-
-        //     },
-        //     TreeMeshMarker,
-        //     RenderLayers::layer(0),
-        //     )
-        //     );
-
-        // // Dodecas
-        // commands.spawn((PbrBundle {
-        //     mesh: meshes.add(main_tree.mesh_nodes()
-        // ),
-        //     material: materials.add(
-        //         Color::rgba(0.8, 0.4, 0.3, 1.0),
-        //     ),
-        //     ..Default::default()
-
-        //     },
-        //     TreeMeshMarker,
-        //     RenderLayers::layer(0),
-        //     )
-        //     );
-    
-        //     commands.insert_resource(main_tree.clone());
-    }   
-
+    // Node_Picking
     if buttons.just_released(MouseButton::Left) {
         let window = q_window.single();
         let (camera, camera_transform) = q_camera.single();
         
-        if false {
-            for (transform, marker) in &mut tree_transform {
+        if true {
+            for (transform, marker) in &mut tree {
                 if let Some(cam_ray) = window
                     .cursor_position()
                     .and_then(|cursor| camera.viewport_to_world(camera_transform, cursor))
@@ -538,10 +418,32 @@ fn pick_node(
 
                         let mut text = display_text_query.single_mut();
                         text.as_mut().sections[0].value = tree_data.branches[i].name.clone();
-                        
+                        // text.as_mut().sections[0].style.
                     }
                 }
             }
         }
+    }
+}
+
+// --- // --- // Utils \\ --- \\ --- \\
+
+fn count_entities(all_entities: Query<()>) {
+    dbg!(all_entities.iter().count());
+}
+
+fn print_typename<T>(_: &T) {
+    println!("{}", std::any::type_name::<T>())
+}
+
+fn animate_light_direction(
+    time: Res<Time>,
+    mut query: Query<&mut Transform, With<DirectionalLight>>,
+    mut q_cam: Query<&mut Cam>, 
+) {
+    // println!("Cam: {:?}", q_cam.single_mut().pos);
+    for mut transform in &mut query {
+        // *transform = Transform::from_rotation(q_cam.single_mut().rot) * Transform::from_xyz(0.0, q_cam.single_mut().pos.y+0.0, 0.0);
+        //transform.rotate_y(time.delta_seconds() * 0.5);
     }
 }
