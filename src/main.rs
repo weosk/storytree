@@ -6,7 +6,7 @@ use bevy::{
     input::{keyboard::KeyCode, mouse::{MouseButtonInput, MouseMotion, MouseWheel}},
     math::{bounding::{BoundingSphere, BoundingSphereCast, BoundingVolume, IntersectsVolume, RayCast3d}, primitives::Sphere, *}, pbr::{extract_meshes, wireframe::WireframeConfig}, 
     prelude::*,
-    render::{camera::ScalingMode, mesh::{self, Indices, PrimitiveTopology}, render_resource::{AsBindGroup, ShaderRef}, view::RenderLayers}
+    render::{camera::ScalingMode, mesh::{self, Indices, PrimitiveTopology}, render_resource::{AsBindGroup, ShaderRef}, view::{RenderLayers, VisibleEntities}}
 };
 
 mod generator;
@@ -108,52 +108,82 @@ fn setup(
 
     // Ui Bundle v , Probably needs Text2dBundle for precise positioning
 
-    // DisplayTextBundle
-    commands.spawn((
-        // Create a TextBundle that has a Text with a single section.
-        TextBundle::from_section(
-            // Accepts a `String` or any type that converts into a `String`, such as `&str`
-            "_",
-            TextStyle {
-                // This font is loaded and will be used instead of the default font.
-                font: asset_server.load("fonts/Roboto-Regular.ttf"),
-                font_size: 20.0,
-                ..default()
-            },
-        ) // Set the justification of the Text
-        .with_text_justify(JustifyText::Center)
-        // Set the style of the TextBundle itself.
-        .with_style(Style {
-            position_type: PositionType::Absolute,
-            bottom: Val::Px(5.0),
-            left: Val::Px(5.0),
-            ..default()
-        }),
-        DisplayPathText
-    )); 
 
-    commands.spawn((
-        // Create a TextBundle that has a Text with a single section.
-        TextBundle::from_section(
-            // Accepts a `String` or any type that converts into a `String`, such as `&str`
-            "^",
-            TextStyle {
-                // This font is loaded and will be used instead of the default font.
-                font: asset_server.load("fonts/Roboto-Regular.ttf"),
-                font_size: 20.0,
-                color: Color::rgba(0.7,0.6,0.6,0.5),
-                ..default()
-            },
-        ) // Set the justification of the Text
-        .with_text_justify(JustifyText::Center)
-        // Set the style of the TextBundle itself.
-        .with_style(Style {
-            position_type: PositionType::Absolute,
-            top: Val::Px(window.single().resolution.height()/2.),
-            left: Val::Px(window.single().resolution.width()/2.),
-            ..default()
-        }),
-    )); 
+    commands.spawn(Camera2dBundle{camera: Camera{order:1,..default()},..Default::default()});
+
+    let font = asset_server.load("fonts/Roboto-Regular.ttf");
+    let text_style = TextStyle {
+        font: font.clone(),
+        font_size: 10.0,
+        ..default()
+    };
+    // let text_justification = JustifyText::Center;
+    // 2d camera
+
+    let mut cnt = 0;
+    for j in 0..10{
+        for i in 0..20{
+            cnt += 1;
+            commands.spawn((
+                Text2dBundle {
+                    text: Text::from_section(i.to_string(), text_style.clone())
+                        ,//.with_justify(text_justification),
+                    transform: Transform::from_translation(Vec3 { x: -500. + j as f32 * 30. , y: -200. + i as f32 * 10., z: i as f32 }),
+                    ..default()
+                },
+                DisplayPathText,
+            ));
+        }
+    }
+    println!("Cnt: {:?}", cnt);
+
+    // DisplayTextBundle
+    // commands.spawn((
+    //     // Create a TextBundle that has a Text with a single section.
+    //     TextBundle::from_section(
+    //         // Accepts a `String` or any type that converts into a `String`, such as `&str`
+    //         "_",
+    //         TextStyle {
+    //             // This font is loaded and will be used instead of the default font.
+    //             font: asset_server.load("fonts/Roboto-Regular.ttf"),
+    //             font_size: 20.0,
+    //             ..default()
+    //         },
+    //     ) // Set the justification of the Text
+    //     .with_text_justify(JustifyText::Center)
+    //     // Set the style of the TextBundle itself.
+    //     .with_style(Style {
+    //         position_type: PositionType::Absolute,
+    //         bottom: Val::Px(5.0),
+    //         left: Val::Px(5.0),
+    //         ..default()
+    //     }),
+    //     DisplayPathText
+    // )); 
+
+    // ^^^^^^^^^^^^^^^^^
+    // commands.spawn((
+    //     // Create a TextBundle that has a Text with a single section.
+    //     TextBundle::from_section(
+    //         // Accepts a `String` or any type that converts into a `String`, such as `&str`
+    //         "^",
+    //         TextStyle {
+    //             // This font is loaded and will be used instead of the default font.
+    //             font: asset_server.load("fonts/Roboto-Regular.ttf"),
+    //             font_size: 20.0,
+    //             color: Color::rgba(0.7,0.6,0.6,0.5),
+    //             ..default()
+    //         },
+    //     ) // Set the justification of the Text
+    //     .with_text_justify(JustifyText::Center)
+    //     // Set the style of the TextBundle itself.
+    //     .with_style(Style {
+    //         position_type: PositionType::Absolute,
+    //         top: Val::Px(window.single().resolution.height()/2.),
+    //         left: Val::Px(window.single().resolution.width()/2.),
+    //         ..default()
+    //     }),
+    // )); 
 
     // Directional Light, Sunlike
     commands.spawn((DirectionalLightBundle {
@@ -222,7 +252,9 @@ fn process_inputs_system(
     buttons: Res<ButtonInput<MouseButton>>,
     q_camera: Query<(&Camera, &GlobalTransform), With<Cam>>,
     q_window: Query<&Window>,
-    mut display_text_query: Query<&mut Text, With<DisplayPathText>>,
+    // mut display_text_query: Query<&mut Text, With<DisplayPathText>>,
+
+    mut q_screen_text_transform: Query<(&mut Text, &mut Transform), (With<Text>, With<DisplayPathText>, Without<Cam>, Without<TreeMeshMarker>)>
 ) {
 
     // Single Instance to avoid iterating queue
@@ -382,13 +414,13 @@ fn process_inputs_system(
         let window = q_window.single();
         let (camera, camera_transform) = q_camera.single();
         
-        if true {
+        if false {
             for (transform, marker) in &mut tree {
-                if let Some(cam_ray) = window
-                    .cursor_position()
-                    .and_then(|cursor| camera.viewport_to_world(camera_transform, cursor))
-                {
+
+                if let Some(cam_ray) = window.cursor_position().and_then(|cursor| camera.viewport_to_world(camera_transform, cursor)){
+
                     if let Some(tree_data) = &mut tree_data {
+
                         let ray_cast = RayCast3d::from_ray(cam_ray, 10000.);
 
                         for (i, branch, ) in tree_data.bounds.clone().into_iter().enumerate(){
@@ -397,8 +429,12 @@ fn process_inputs_system(
                                 
                                 println!("#{} CastResult: {:?} Path: {:?}", i, cast_result, tree_data.branches[i].name);
 
-                                let mut text = display_text_query.single_mut();
-                                text.as_mut().sections[0].value = tree_data.branches[i].name.clone();
+                                // let mut text = q_screen_text_transform.single_mut();
+                                for (mut text, mut transform ) in &mut q_screen_text_transform {
+                                    text.as_mut().sections[0].value = tree_data.branches[i].name.clone();
+                                }
+                                // text.as_mut().sections[0].value = cnt.to_string();
+
                                 
                             }
                         }
@@ -409,18 +445,38 @@ fn process_inputs_system(
         }
         else {
             if let Some(tree_data) = &mut tree_data {
-                let bound_sphere = BoundingSphere::new(camera_transform.transform_point(Vec3::splat(0.)), 100.0);
+                let bound_sphere = BoundingSphere::new(camera_transform.translation(), 50.0);
+
+                let mut q_screen_text = q_screen_text_transform.iter_mut();
+
                 for (i, branch, ) in tree_data.bounds.clone().into_iter().enumerate(){
                     let cast_result = bound_sphere.intersects(&branch);//BoundingSphereCast::from_ray(branch, world_position, 10000.);
                     if cast_result == true {
 
-                        println!("#{} CastResult: {:?} Path: {:?}", i, cast_result, tree_data.branches[i].name);
+                        println!("#{} CastResult: {:?} Path: {:?} \n BranchInfo: {:?} \n", i, cast_result, tree_data.branches[i].name, tree_data.branches[i]);
 
-                        let mut text = display_text_query.single_mut();
-                        text.as_mut().sections[0].value = tree_data.branches[i].name.clone();
+                        // let mut text = q_screen_text_transform.single_mut();
+                        // text.as_mut().sections[0].value = tree_data.branches[i].name.clone();
                         // text.as_mut().sections[0].style.
+
+                        if let Some((mut text,mut text_transform)) = q_screen_text.next(){
+
+                        // for (mut text, mut transform ) in &mut q_screen_text_transform {
+                        // }
+
+                            // Zuordnung gelingt nur bei horizontal gerader Kamera halbwegs korrekt, needs check if node is in visible frustrum
+                            if let Some(screen_position) = camera.world_to_viewport(camera_transform, tree_data.branches[i].transform.translation){
+                                text_transform.translation.x = screen_position.x - window.width() /2.;
+                                text_transform.translation.y = screen_position.y + window.height()/2.;
+
+                                text.sections[0].value = tree_data.branches[i].name.clone() + " " + &screen_position.x.to_string() + " " + &screen_position.y.to_string();
+                            }
+                        }
                     }
                 }
+
+                println!("BoundSphere: {:?}", bound_sphere);
+
             }
         }
     }
