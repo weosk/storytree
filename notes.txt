@@ -80,3 +80,8 @@ Mesh Subfolder splitting
 Treegeneration generalis
 Vertexcolourmarkings for metadata?
 Letter prerender / shader split / number split ? 
+
+29.04.2024
+Tidy up code! 
+Display BoundingSphere PathTitles calculated after every movement of the camera
+Merge update_scale & pick_nodes into process_inputs_system

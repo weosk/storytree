@@ -29,6 +29,8 @@ struct TreeMeshMarker;
 
 #[derive(Component)]
 struct DisplayPathText;
+struct Cam2D;
+
 
 fn main() {
     //env::set_var("RUST_BACKTRACE", "1");
@@ -64,7 +66,9 @@ fn setup(
     let mut main_tree = database::Tree::new();
     // main_tree.construct("./TestTree/Tree".to_string()); // No end "/" allowed
     // main_tree.construct("/home/nom/code/rust/storytree".to_string()); // No end "/" allowed
-    main_tree.construct("/".to_string()); // No end "/" allowed
+    // main_tree.construct("/".to_string()); // No end "/" allowed
+    // main_tree.construct("./TestTree/Tree".to_string()); // No end "/" allowed
+    main_tree.construct("/sys".to_string()); // No end "/" allowed
     
     commands.spawn((PbrBundle {
         mesh: meshes.add(main_tree.grow()
@@ -108,17 +112,16 @@ fn setup(
 
     // Ui Bundle v , Probably needs Text2dBundle for precise positioning
 
-
-    commands.spawn(Camera2dBundle{camera: Camera{order:1,..default()},..Default::default()});
-
-    let font = asset_server.load("fonts/Roboto-Regular.ttf");
+    let font = asset_server.load("fonts/Roboto-Thin.ttf");
     let text_style = TextStyle {
         font: font.clone(),
-        font_size: 10.0,
+        font_size: 12.0,
         ..default()
     };
-    // let text_justification = JustifyText::Center;
+    let text_justification = JustifyText::Center;
+
     // 2d camera
+    commands.spawn(Camera2dBundle{camera: Camera{order:1,..default()},..Default::default()});
 
     let mut cnt = 0;
     for j in 0..10{
@@ -127,8 +130,11 @@ fn setup(
             commands.spawn((
                 Text2dBundle {
                     text: Text::from_section(i.to_string(), text_style.clone())
-                        ,//.with_justify(text_justification),
-                    transform: Transform::from_translation(Vec3 { x: -500. + j as f32 * 30. , y: -200. + i as f32 * 10., z: i as f32 }),
+                        .with_justify(text_justification),
+                    // transform: Transform::from_translation(Vec3 { x: -500. + j as f32 * 30. , y: -200. + i as f32 * 10., z: i as f32 }),
+                    transform: Transform::from_translation(Vec3::splat(2220.)),
+                    
+                    text_anchor: bevy::sprite::Anchor::CenterLeft,
                     ..default()
                 },
                 DisplayPathText,
@@ -212,8 +218,8 @@ fn setup(
     commands.spawn((Camera3dBundle {
         transform: Transform::from_xyz(0., 10., 40.0).looking_at(Vec3::ZERO, Vec3::Y),
         projection: PerspectiveProjection {
-            fov: (90.0 / 360.0) * (std::f32::consts::PI * 2.0),
-            aspect_ratio: 1.0,
+            // fov: (90.0 / 360.0) * (std::f32::consts::PI * 2.0),
+            // aspect_ratio: 1.0,
             ..default()
         }.into(),
         ..default()
@@ -254,7 +260,12 @@ fn process_inputs_system(
     q_window: Query<&Window>,
     // mut display_text_query: Query<&mut Text, With<DisplayPathText>>,
 
-    mut q_screen_text_transform: Query<(&mut Text, &mut Transform), (With<Text>, With<DisplayPathText>, Without<Cam>, Without<TreeMeshMarker>)>
+    mut q_screen_text_transform: Query<(&mut Text, &mut Transform), (With<Text>, With<DisplayPathText>, Without<Cam>, Without<TreeMeshMarker>)>,
+
+    //VisualDebugging
+    mut commands: Commands,
+    mut meshes: ResMut<Assets<Mesh>>,
+    mut materials: ResMut<Assets<StandardMaterial>>,
 ) {
 
     // Single Instance to avoid iterating queue
@@ -354,6 +365,7 @@ fn process_inputs_system(
 
         // Update actual fov / perspective / to zoom to an extend
         for mut pp in q_pp.iter_mut() {
+            
             // Perspective Projection Update
             *pp = PerspectiveProjection {
                 fov: cam.fov,
@@ -445,10 +457,10 @@ fn process_inputs_system(
         }
         else {
             if let Some(tree_data) = &mut tree_data {
-                let bound_sphere = BoundingSphere::new(camera_transform.translation(), 50.0);
+                let bound_sphere = BoundingSphere::new(camera_transform.translation(), 100.0);
 
                 let mut q_screen_text = q_screen_text_transform.iter_mut();
-
+                let mut cnt = 0.;
                 for (i, branch, ) in tree_data.bounds.clone().into_iter().enumerate(){
                     let cast_result = bound_sphere.intersects(&branch);//BoundingSphereCast::from_ray(branch, world_position, 10000.);
                     if cast_result == true {
@@ -465,11 +477,23 @@ fn process_inputs_system(
                         // }
 
                             // Zuordnung gelingt nur bei horizontal gerader Kamera halbwegs korrekt, needs check if node is in visible frustrum
-                            if let Some(screen_position) = camera.world_to_viewport(camera_transform, tree_data.branches[i].transform.translation){
-                                text_transform.translation.x = screen_position.x - window.width() /2.;
-                                text_transform.translation.y = screen_position.y + window.height()/2.;
+                            if let Some(screen_position) = camera.world_to_ndc(camera_transform, tree_data.branches[i].transform.translation){
 
-                                text.sections[0].value = tree_data.branches[i].name.clone() + " " + &screen_position.x.to_string() + " " + &screen_position.y.to_string();
+                                // let cube = commands.spawn(PbrBundle {
+                                //     mesh: meshes.add(Cuboid::new(0.5,0.5,10.)),
+                                //     material: materials.add(Color::rgb(0.4, 0.3, 0.4)),
+                                //     transform: Transform::from_translation(tree_data.branches[i].transform.translation),
+                                //     ..default()
+                                // }).id();
+
+                                // commands.entity(cube).despawn();
+
+                                text_transform.translation.x = screen_position.x * window.width() *0.5;// - window.width()/2.;
+                                text_transform.translation.y = screen_position.y * window.height()*0.5;// - window.height()/2.;
+                                text_transform.translation.z = screen_position.z;
+
+                                text.sections[0].value = tree_data.branches[i].name.clone();// + " " + &screen_position.x.to_string() + " " + &screen_position.y.to_string();
+                                cnt += 20.;
                             }
                         }
                     }
@@ -480,6 +504,39 @@ fn process_inputs_system(
             }
         }
     }
+
+    let window = q_window.single();
+    let (camera, camera_transform) = q_camera.single();
+    if let Some(tree_data) = &mut tree_data {
+        let bound_sphere = BoundingSphere::new(camera_transform.translation(), 100.0);
+
+        let mut q_screen_text = q_screen_text_transform.iter_mut();
+        let mut cnt = 0.;
+        for (i, branch, ) in tree_data.bounds.clone().into_iter().enumerate(){
+            let cast_result = bound_sphere.intersects(&branch);//BoundingSphereCast::from_ray(branch, world_position, 10000.);
+            if cast_result == true {
+
+                println!("#{} CastResult: {:?} Path: {:?} \n BranchInfo: {:?} \n", i, cast_result, tree_data.branches[i].name, tree_data.branches[i]);
+
+                // let mut text = q_screen_text_transform.single_mut();
+                // text.as_mut().sections[0].value = tree_data.branches[i].name.clone();
+                // text.as_mut().sections[0].style.
+
+                if let Some((mut text,mut text_transform)) = q_screen_text.next(){
+                    if let Some(screen_position) = camera.world_to_ndc(camera_transform, tree_data.branches[i].transform.translation){
+
+                        text_transform.translation.x = screen_position.x * window.width() *0.5;// - window.width()/2.;
+                        text_transform.translation.y = screen_position.y * window.height()*0.5;// - window.height()/2.;
+                        text_transform.translation.z = screen_position.z;
+
+                        text.sections[0].value = tree_data.branches[i].name.clone();// + " " + &screen_position.x.to_string() + " " + &screen_position.y.to_string();
+                    }
+                }
+            }
+        }
+    }
+
+
 }
 
 // --- // --- // Utils \\ --- \\ --- \\
