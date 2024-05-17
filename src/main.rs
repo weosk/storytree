@@ -9,6 +9,9 @@ use bevy::{
     render::{camera::ScalingMode, mesh::{self, Indices, PrimitiveTopology}, render_resource::{AsBindGroup, ShaderRef}, view::{RenderLayers, VisibleEntities}}
 };
 
+use std::process::Command;
+
+
 mod generator;
 mod database;
 
@@ -64,11 +67,11 @@ fn setup(
     // Default Spawn of Scene Spawning ///////////////////////////////////////////////////////
 
     let mut main_tree = database::Tree::new();
-    // main_tree.construct("./TestTree/Tree".to_string()); // No end "/" allowed
+    main_tree.construct("./TestTree/Tree".to_string()); // No end "/" allowed
     // main_tree.construct("/home/nom/code/rust/storytree".to_string()); // No end "/" allowed
     // main_tree.construct("/".to_string()); // No end "/" allowed
     // main_tree.construct("./TestTree/Tree".to_string()); // No end "/" allowed
-    main_tree.construct("/sys".to_string()); // No end "/" allowed
+    // main_tree.construct("/sys".to_string()); // No end "/" allowed
     
     commands.spawn((PbrBundle {
         mesh: meshes.add(main_tree.grow()
@@ -422,11 +425,15 @@ fn process_inputs_system(
         }
 
     // Node_Picking
+    let window = q_window.single();
+    let (camera, camera_transform) = q_camera.single();
+    let mut q_screen_text = q_screen_text_transform.iter_mut();
+
     if buttons.just_released(MouseButton::Left) {
-        let window = q_window.single();
-        let (camera, camera_transform) = q_camera.single();
+        // let window = q_window.single();
+        // let (camera, camera_transform) = q_camera.single();
         
-        if false {
+        if true {
             for (transform, marker) in &mut tree {
 
                 if let Some(cam_ray) = window.cursor_position().and_then(|cursor| camera.viewport_to_world(camera_transform, cursor)){
@@ -439,15 +446,41 @@ fn process_inputs_system(
                             let cast_result = ray_cast.intersects(&branch);//BoundingSphereCast::from_ray(branch, world_position, 10000.);
                             if cast_result == true {
                                 
-                                println!("#{} CastResult: {:?} Path: {:?}", i, cast_result, tree_data.branches[i].name);
+                                // println!("#{} CastResult: {:?} Path: {:?}", i, cast_result, tree_data.branches[i].name);
 
                                 // let mut text = q_screen_text_transform.single_mut();
-                                for (mut text, mut transform ) in &mut q_screen_text_transform {
-                                    text.as_mut().sections[0].value = tree_data.branches[i].name.clone();
+                                // for (mut text, mut transform ) in &mut q_screen_text_transform {
+                                //     text.as_mut().sections[0].value = tree_data.branches[i].name.clone();
+                                // }
+
+                                if let Some((mut text,mut text_transform)) = q_screen_text.next(){
+                                        text_transform.translation.x = 0.;
+                                        text_transform.translation.y = 0.;
+                                        text.sections[0].value = tree_data.branches[i].name.clone();
                                 }
+
                                 // text.as_mut().sections[0].value = cnt.to_string();
 
-                                
+                                //Terminalmagic
+
+                                // let output = Command::new("/bin/cat")
+                                //                     .arg("file.txt")
+                                //                     .output()
+                                //                     .expect("failed to execute process");
+
+                                // println!("status: {}", output.status);
+                                // println!("stdout: {}", String::from_utf8_lossy(&output.stdout));
+                                // println!("stderr: {}", String::from_utf8_lossy(&output.stderr));
+
+                                // assert!(output.status.success());
+
+                                let output = Command::new("mkdir")
+                                .arg(tree_data.branches[i].name.clone().to_string() + "/OoOoO")
+                                .spawn()
+                                .expect("Mkdir command failed to start");
+
+                                println!("Terminalcommand!: {:?}", output);
+
                             }
                         }
                         println!("Closed \n");
@@ -455,72 +488,18 @@ fn process_inputs_system(
                 }
             }
         }
-        else {
-            if let Some(tree_data) = &mut tree_data {
-                let bound_sphere = BoundingSphere::new(camera_transform.translation(), 100.0);
-
-                let mut q_screen_text = q_screen_text_transform.iter_mut();
-                let mut cnt = 0.;
-                for (i, branch, ) in tree_data.bounds.clone().into_iter().enumerate(){
-                    let cast_result = bound_sphere.intersects(&branch);//BoundingSphereCast::from_ray(branch, world_position, 10000.);
-                    if cast_result == true {
-
-                        println!("#{} CastResult: {:?} Path: {:?} \n BranchInfo: {:?} \n", i, cast_result, tree_data.branches[i].name, tree_data.branches[i]);
-
-                        // let mut text = q_screen_text_transform.single_mut();
-                        // text.as_mut().sections[0].value = tree_data.branches[i].name.clone();
-                        // text.as_mut().sections[0].style.
-
-                        if let Some((mut text,mut text_transform)) = q_screen_text.next(){
-
-                        // for (mut text, mut transform ) in &mut q_screen_text_transform {
-                        // }
-
-                            // Zuordnung gelingt nur bei horizontal gerader Kamera halbwegs korrekt, needs check if node is in visible frustrum
-                            if let Some(screen_position) = camera.world_to_ndc(camera_transform, tree_data.branches[i].transform.translation){
-
-                                // let cube = commands.spawn(PbrBundle {
-                                //     mesh: meshes.add(Cuboid::new(0.5,0.5,10.)),
-                                //     material: materials.add(Color::rgb(0.4, 0.3, 0.4)),
-                                //     transform: Transform::from_translation(tree_data.branches[i].transform.translation),
-                                //     ..default()
-                                // }).id();
-
-                                // commands.entity(cube).despawn();
-
-                                text_transform.translation.x = screen_position.x * window.width() *0.5;// - window.width()/2.;
-                                text_transform.translation.y = screen_position.y * window.height()*0.5;// - window.height()/2.;
-                                text_transform.translation.z = screen_position.z;
-
-                                text.sections[0].value = tree_data.branches[i].name.clone();// + " " + &screen_position.x.to_string() + " " + &screen_position.y.to_string();
-                                cnt += 20.;
-                            }
-                        }
-                    }
-                }
-
-                println!("BoundSphere: {:?}", bound_sphere);
-
-            }
-        }
     }
 
-    let window = q_window.single();
-    let (camera, camera_transform) = q_camera.single();
+    // Updates node information in cameraview
     if let Some(tree_data) = &mut tree_data {
-        let bound_sphere = BoundingSphere::new(camera_transform.translation(), 100.0);
-
-        let mut q_screen_text = q_screen_text_transform.iter_mut();
-        let mut cnt = 0.;
+        // Places the bounding sphere a bit in front of the camera, bounding box at viewplane may be more usefull
+        let bound_sphere = BoundingSphere::new(camera_transform.forward().mul_add(Vec3 { x: 0., y: 0., z: 220. }, camera_transform.translation()), 200.0);
+        // let mut q_screen_text = q_screen_text_transform.iter_mut();
         for (i, branch, ) in tree_data.bounds.clone().into_iter().enumerate(){
             let cast_result = bound_sphere.intersects(&branch);//BoundingSphereCast::from_ray(branch, world_position, 10000.);
             if cast_result == true {
 
-                println!("#{} CastResult: {:?} Path: {:?} \n BranchInfo: {:?} \n", i, cast_result, tree_data.branches[i].name, tree_data.branches[i]);
-
-                // let mut text = q_screen_text_transform.single_mut();
-                // text.as_mut().sections[0].value = tree_data.branches[i].name.clone();
-                // text.as_mut().sections[0].style.
+                // println!("#{} CastResult: {:?} Path: {:?} \n BranchInfo: {:?} \n", i, cast_result, tree_data.branches[i].name, tree_data.branches[i]);
 
                 if let Some((mut text,mut text_transform)) = q_screen_text.next(){
                     if let Some(screen_position) = camera.world_to_ndc(camera_transform, tree_data.branches[i].transform.translation){
@@ -534,6 +513,10 @@ fn process_inputs_system(
                 }
             }
         }
+        while let Some((mut text,mut text_transform))  = q_screen_text.next(){
+            text_transform.translation.x = -window.width();
+            text_transform.translation.y = window.height();
+        }               
     }
 
 

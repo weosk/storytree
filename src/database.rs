@@ -175,6 +175,8 @@ impl Tree {
 
 }
 
+
+    // Can we get this in parametrices?
     fn dive(mut index: usize, branches: &mut Vec<Branch>, line_vertices: &mut Vec<Vec3>) -> () {
         if branches.len() > index {
             let mut pos: Vec3 = Vec3::splat(0.);
