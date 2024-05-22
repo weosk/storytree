@@ -6,11 +6,10 @@ use bevy::{
     input::{keyboard::KeyCode, mouse::{MouseButtonInput, MouseMotion, MouseWheel}},
     math::{bounding::{BoundingSphere, BoundingSphereCast, BoundingVolume, IntersectsVolume, RayCast3d}, primitives::Sphere, *}, pbr::{extract_meshes, wireframe::WireframeConfig}, 
     prelude::*,
-    render::{camera::ScalingMode, mesh::{self, Indices, PrimitiveTopology}, render_resource::{AsBindGroup, ShaderRef}, view::{RenderLayers, VisibleEntities}}
+    render::{camera::ScalingMode, mesh::{self, Indices, PrimitiveTopology}, render_resource::{AsBindGroup, ShaderRef}, view::{RenderLayers, VisibleEntities}}, transform
 };
 
 use std::process::Command;
-
 
 mod generator;
 mod database;
@@ -80,7 +79,6 @@ fn setup(
             Color::rgba(16., 0., 0., 1.0),
         ),
         ..Default::default()
-
         },
         TreeMeshMarker,
         RenderLayers::layer(0),
@@ -114,7 +112,6 @@ fn setup(
     });
 
     // Ui Bundle v , Probably needs Text2dBundle for precise positioning
-
     let font = asset_server.load("fonts/Roboto-Thin.ttf");
     let text_style = TextStyle {
         font: font.clone(),
@@ -395,8 +392,7 @@ fn process_inputs_system(
     if keys.just_released(KeyCode::Digit1) {
         for (transform, cube) in &mut tree {
         if let Some(tree_data) = &mut tree_data {
-            println!("Radius: {:?}", tree_data.bounds[2].sphere.radius);
-
+            // println!("Radius: {:?}", tree_data.bounds[2].sphere.radius);
             for i in 0..tree_data.bounds.len(){
                 tree_data.bounds[i].center = tree_data.branches[i].transform.transform_point(Vec3::splat(0.));
                 tree_data.bounds[i].center *= transform.scale;
@@ -433,7 +429,6 @@ fn process_inputs_system(
         // let window = q_window.single();
         // let (camera, camera_transform) = q_camera.single();
         
-        if true {
             for (transform, marker) in &mut tree {
 
                 if let Some(cam_ray) = window.cursor_position().and_then(|cursor| camera.viewport_to_world(camera_transform, cursor)){
@@ -446,20 +441,11 @@ fn process_inputs_system(
                             let cast_result = ray_cast.intersects(&branch);//BoundingSphereCast::from_ray(branch, world_position, 10000.);
                             if cast_result == true {
                                 
-                                // println!("#{} CastResult: {:?} Path: {:?}", i, cast_result, tree_data.branches[i].name);
-
-                                // let mut text = q_screen_text_transform.single_mut();
-                                // for (mut text, mut transform ) in &mut q_screen_text_transform {
-                                //     text.as_mut().sections[0].value = tree_data.branches[i].name.clone();
-                                // }
-
                                 if let Some((mut text,mut text_transform)) = q_screen_text.next(){
                                         text_transform.translation.x = 0.;
                                         text_transform.translation.y = 0.;
                                         text.sections[0].value = tree_data.branches[i].name.clone();
                                 }
-
-                                // text.as_mut().sections[0].value = cnt.to_string();
 
                                 //Terminalmagic
 
@@ -487,7 +473,6 @@ fn process_inputs_system(
                     }
                 }
             }
-        }
     }
 
     // Updates node information in cameraview
@@ -502,7 +487,7 @@ fn process_inputs_system(
                 // println!("#{} CastResult: {:?} Path: {:?} \n BranchInfo: {:?} \n", i, cast_result, tree_data.branches[i].name, tree_data.branches[i]);
 
                 if let Some((mut text,mut text_transform)) = q_screen_text.next(){
-                    if let Some(screen_position) = camera.world_to_ndc(camera_transform, tree_data.branches[i].transform.translation){
+                    if let Some(screen_position) = camera.world_to_ndc(camera_transform, tree_data.bounds[i].center){
 
                         text_transform.translation.x = screen_position.x * window.width() *0.5;// - window.width()/2.;
                         text_transform.translation.y = screen_position.y * window.height()*0.5;// - window.height()/2.;
@@ -513,13 +498,11 @@ fn process_inputs_system(
                 }
             }
         }
-        while let Some((mut text,mut text_transform))  = q_screen_text.next(){
+        while let Some((_text,mut text_transform))  = q_screen_text.next(){
             text_transform.translation.x = -window.width();
             text_transform.translation.y = window.height();
         }               
     }
-
-
 }
 
 // --- // --- // Utils \\ --- \\ --- \\

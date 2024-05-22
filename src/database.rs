@@ -57,10 +57,7 @@ impl Tree {
         for entry in WalkDir::new(path).max_depth(maxdepth).sort_by(|a,b| a.file_name().cmp(b.file_name())).into_iter().filter_map(|e| e.ok()) {
             if entry.file_type().is_dir() {
 
-                // let ast =                     Branch{ name: entry.path().to_str().unwrap().to_string(), num_of_children:
-                //             count_directories(entry.path().to_str().unwrap())} ;
-                
-                // println!("");
+                // let ast = Branch{ name: entry.path().to_str().unwrap().to_string(), num_of_children: count_directories(entry.path().to_str().unwrap())} ;
 
                 // Would need windows addition anyway
                 if entry.path().to_str().unwrap().to_string() == "/".to_string() {
@@ -76,14 +73,14 @@ impl Tree {
                     id_index = 1;
                 }
                 else {
-                self.branches.push( Branch{ 
-                    name: entry.path().to_str().unwrap().to_string(), 
-                    num_of_children: count_directories(entry.path().to_str().unwrap()), 
-                    children: Vec::new(),
-                    transform: Transform::default(),//Mat4::default(),
-                    depth: entry.depth(),
-                    }
-                    );
+                    self.branches.push( Branch{ 
+                                        name: entry.path().to_str().unwrap().to_string(), 
+                                        num_of_children: count_directories(entry.path().to_str().unwrap()), 
+                                        children: Vec::new(),
+                                        transform: Transform::default(),//Mat4::default(),
+                                        depth: entry.depth(),
+                                        }
+                        );
                 
                     self.hash_map.insert(entry.path().to_str().unwrap().to_string(), id_index);
                 }
@@ -122,24 +119,6 @@ impl Tree {
         let mut pos = Vec3::splat(0.);
         let mut last_pos = Vec3::splat(0.);
 
-        // for (i, ast) in self.branches.clone().into_iter().enumerate() {
-        //     pos.x = f32::sin(i as f32 * 0.5);
-        //     pos.y = i as f32;
-        //     pos.z = f32::cos(i as f32 * 0.5);// + f32::cos(i as f32 * 0.1)*4.;
-        //     line_vertices.push(pos);
-
-        //     pos - last_pos;
-
-        //     last_pos = pos;
-        // }
-
-        // println!("Heere");
-        // for (i, child) in self.branches[0].clone().children.into_iter().enumerate() {
-        //     println!("i: {:?} child: {:?}, vec: {:?}", i, child, self.branches.get(child).unwrap().children);
-        //     for child in self.branches[child].clone().children.into_iter() {
-        //         println!("child: {:?}", child);
-        //     }
-        // }
         dive(0, &mut self.branches, &mut line_vertices);
 
         line_mesh.insert_attribute(Mesh::ATTRIBUTE_POSITION, line_vertices);
@@ -159,7 +138,6 @@ impl Tree {
             self.bounds[cnt].sphere = primitives::Sphere{ radius: branch.transform.scale.y };//branch.transform.scale;
             self.bounds[cnt].center = branch.transform.compute_matrix().transform_point(Vec3::splat(0.));
             // println!("Bounds: {:?}, {:?}", self.bounds[cnt].center, self.bounds[cnt].sphere);
-
             // println!("Transform: {:?}", branch.transform);
         }
 
@@ -174,7 +152,6 @@ impl Tree {
     }
 
 }
-
 
     // Can we get this in parametrices?
     fn dive(mut index: usize, branches: &mut Vec<Branch>, line_vertices: &mut Vec<Vec3>) -> () {
@@ -194,13 +171,15 @@ impl Tree {
             let mut transform = branches[index].transform;
             pos = transform.transform_point(Vec3::splat(0.)); 
             last_pos = pos;
+
             let mut spiral_pos = Vec3::splat(0.);
             let mut spiral_transform = Transform::default();
+
             spiral_transform.translation.y = 1.;
             spiral_transform.translation.z = 0.333;
             spiral_transform.rotate_y(PI/16.);
-            
-            println!(" Path:{:?}\n Index: {:?}\n ChildrenLen:{:?}\n Children:{:?}\n\n",branches[index].name, index, branches[index].children.len(), branches[index].children );
+
+            // println!(" Path:{:?}\n Index: {:?}\n ChildrenLen:{:?}\n Children:{:?}\n\n",branches[index].name, index, branches[index].children.len(), branches[index].children );
 
             for i in 0..(branches[index].children.len() as i32 * extending_factor) - 0 { // Number of vertices of branch
                 // if spiral_transform.translation.z <= 0.5 {
@@ -234,7 +213,7 @@ impl Tree {
 
             for child_index in branches[index].children.clone() {
                 if !(branches.len() < child_index) {
-                    println!("ChildIndex: {:?} \nBranchesLen: {:?}", child_index, branches.len());
+                    // println!("ChildIndex: {:?} \nBranchesLen: {:?}", child_index, branches.len());
                     dive(child_index, branches, line_vertices);
                 }
             }
