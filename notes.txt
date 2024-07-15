@@ -85,3 +85,50 @@ Letter prerender / shader split / number split ?
 Tidy up code! 
 Display BoundingSphere PathTitles calculated after every movement of the camera
 Merge update_scale & pick_nodes into process_inputs_system
+
+31.05.2024
+Todos: 
+\1 Node Display names needs fixing, don't dislplay them from behind
+\2 List files only stays a fleeting moment cause its bound to node names
+\3 Parametericed names for different trees would be nice, with internal respawn to generate new visualisations on the fly
+\4 the look to function needs a stable UP vector, depending von previous movement, idea still missing here
+/5 Write Thesis
+
+
+
+
+Tubes:
+if branches[index].depth <= 1 {
+            scale = 10.;
+            extending_factor = 20 * scale as i32;
+            spiral_transform.translation.y = 0.5 * scale * 10.;//* scale;
+            spiral_transform.translation.z = 0.333 * scale * 1000.;// * scale;
+            spiral_transform.rotate_y(PI/16.);
+            // spiral_transform.rotate_y(1.*PI/(index as f32+0.1) as f32);
+        }
+        else if branches[index].depth <= 2 {
+            scale = 5.;
+            extending_factor = 20 * scale as i32;
+            spiral_transform.translation.y = 0.5 * scale ;//* scale;
+            spiral_transform.translation.z = 0.333 * scale * 100.;// * scale;
+            spiral_transform.rotate_y(PI/16.);
+            // spiral_transform.rotate_y(1.*PI/(index as f32+0.1) as f32);
+        }
+        else if branches[index].depth <= 3 {
+            scale = 2.;
+            extending_factor = 20 * scale as i32;
+            spiral_transform.translation.y = 0.5 * scale;//* scale;
+            spiral_transform.translation.z = 0.333 * scale * 10.;// * scale;
+            spiral_transform.rotate_y(PI/16.);
+            // spiral_transform.rotate_y(1.*PI/(index as f32+0.1) as f32);
+        }
+        // if false {}
+        else { // "Natural"
+            extending_factor = 10 ;
+            scale = 1.;
+            spiral_transform.translation.y = 1.0   *2.;//* scale;
+            spiral_transform.translation.z = 0.333 *2.;// * scale;
+            // spiral_transform.rotate_y(PI/16.);
+            spiral_transform.rotate_y(4.*PI/(index as f32+0.5) as f32);
+            // spiral_transform.rotate_z(4.*PI/(index as f32+0.5) as f32);
+        }

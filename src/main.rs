@@ -1,13 +1,18 @@
 //! A simple 3D scene with light shining over a cube sitting on a plane.
 
-use std::{env, f32::consts::PI, fs, iter::Map};
+use std::{env, f32::consts::PI, fs, io::Read, iter::Map};
 
 use bevy::{
     input::{keyboard::KeyCode, mouse::{MouseButtonInput, MouseMotion, MouseWheel}},
     math::{bounding::{BoundingSphere, BoundingSphereCast, BoundingVolume, IntersectsVolume, RayCast3d}, primitives::Sphere, *}, pbr::{extract_meshes, wireframe::WireframeConfig}, 
     prelude::*,
+    pbr::CascadeShadowConfigBuilder,
     render::{camera::ScalingMode, mesh::{self, Indices, PrimitiveTopology}, render_resource::{AsBindGroup, ShaderRef}, view::{RenderLayers, VisibleEntities}}, transform
 };
+
+
+use std::str;
+use walkdir::{WalkDir, DirEntry};
 
 use std::process::Command;
 
@@ -39,7 +44,7 @@ fn main() {
 
     App::new()
         .add_plugins(DefaultPlugins)
-        .insert_resource(ClearColor(Color::rgb(0.01, 0.01, 0.21))) // Background 2 Darkblu
+        .insert_resource(ClearColor(Color::rgb(0.31, 0.51, 0.21))) // Background 2 Darkblu
         .add_systems(Startup, setup)
         .add_systems(Update, (bevy::window::close_on_esc, process_inputs_system, animate_light_direction))
         .insert_resource(AmbientLight {
@@ -66,14 +71,16 @@ fn setup(
     // Default Spawn of Scene Spawning ///////////////////////////////////////////////////////
 
     let mut main_tree = database::Tree::new();
-    main_tree.construct("./TestTree/Tree".to_string()); // No end "/" allowed
-    // main_tree.construct("/home/nom/code/rust/storytree".to_string()); // No end "/" allowed
-    // main_tree.construct("/".to_string()); // No end "/" allowed
     // main_tree.construct("./TestTree/Tree".to_string()); // No end "/" allowed
+    // main_tree.construct("/home/nom/code/rust/storytree".to_string()); // No end "/" allowed
     // main_tree.construct("/sys".to_string()); // No end "/" allowed
-    
+    // main_tree.construct("./TestTree/Tree".to_string()); // No end "/" allowed
+    main_tree.construct("/".to_string()); // No end "/" allowed
+    // main_tree.construct("/sys/devices/pci0000:00".to_string()); // No end "/" allowed
+    // main_tree.construct("/sys/devices/pci0000:00/0000:00:02.0/drm".to_string());
+    let mut tree_name: String = "000".to_string();
     commands.spawn((PbrBundle {
-        mesh: meshes.add(main_tree.grow()
+        mesh: meshes.add(main_tree.grow(&mut tree_name)
     ),
         material: materials.add(
             Color::rgba(16., 0., 0., 1.0),
@@ -105,8 +112,9 @@ fn setup(
 
     // plane
     commands.spawn(PbrBundle {
-        mesh: meshes.add(Circle::new(500.)),
-        material: materials.add(Color::rgb(0.4, 0.3, 0.4)),
+        mesh: meshes.add(Circle::new(5000000.)),
+        material: materials.add(Color::rgb(1., 1., 1.)),
+        // material: materials.add(Color::rgb(0.4, 0.3, 0.4)),
         transform: Transform::from_rotation(Quat::from_rotation_x(-PI/2.)),
         ..default()
     });
@@ -115,7 +123,7 @@ fn setup(
     let font = asset_server.load("fonts/Roboto-Thin.ttf");
     let text_style = TextStyle {
         font: font.clone(),
-        font_size: 12.0,
+        font_size: 18.0,
         ..default()
     };
     let text_justification = JustifyText::Center;
@@ -132,8 +140,7 @@ fn setup(
                     text: Text::from_section(i.to_string(), text_style.clone())
                         .with_justify(text_justification),
                     // transform: Transform::from_translation(Vec3 { x: -500. + j as f32 * 30. , y: -200. + i as f32 * 10., z: i as f32 }),
-                    transform: Transform::from_translation(Vec3::splat(2220.)),
-                    
+                    transform: Transform::default(),//from_translation(Vec3::splat(2220.)),
                     text_anchor: bevy::sprite::Anchor::CenterLeft,
                     ..default()
                 },
@@ -200,14 +207,19 @@ fn setup(
                         blue: 0.1,
                         alpha:0.1,
             },
-            shadows_enabled: true,
+            shadows_enabled: false,
             ..default()
         },
-        transform: Transform::from_xyz(0.,200.,0.)*Transform::from_rotation(Quat::from_rotation_x(-90.)),
+        transform: Transform::from_rotation(Quat::from_rotation_x(-PI/2.)),
+
+        // transform: Transform::from_xyz(0.,-200.,0.)*Transform::from_rotation(Quat::from_rotation_x(PI/2.)),
         ..default()
     },
     // RenderLayers::all(),)
     ));
+
+
+
 
     let x = 1.0;
     let y = 1.0;
@@ -224,7 +236,7 @@ fn setup(
         }.into(),
         ..default()
     },
-        Cam {yaw: 0., pitch: 0., fov: 1.0, speed:0.2, pos: Vec3::ZERO, rot: Quat::from_xyzw(0.0, 0.0, 0.0, 1.0)},
+        Cam {yaw: 0., pitch: 0., fov: 1.0, speed:0.4, pos: Vec3::ZERO, rot: Quat::from_xyzw(0.0, 0.0, 0.0, 1.0)},
         // RenderLayers::all(),
     ));
 
@@ -345,10 +357,10 @@ fn process_inputs_system(
 
             // Adjust Speed
             if keys.pressed(KeyCode::ShiftLeft) {
-                cam.speed += 0.07;
+                cam.speed += 1.07;
             }
             if keys.pressed(KeyCode::ControlLeft) {
-                cam.speed -= 0.07;
+                cam.speed -= 1.07;
 
                 // treebuilder::print_hello();
             }
@@ -386,6 +398,7 @@ fn process_inputs_system(
     if keys.pressed(KeyCode::Digit1) {
         for (mut transform, cube) in &mut tree {
             transform.scale *= Vec3{x: 0.9,y:0.9,z: 0.9};
+            // transform.translation.y += 2. * transform.scale.y;
         }
     }
 
@@ -405,6 +418,7 @@ fn process_inputs_system(
     if keys.pressed(KeyCode::Digit2) {
         for (mut transform, cube) in &mut tree {
             transform.scale *= Vec3{x: 1.1,y:1.1,z: 1.1};
+            // transform.translation.y -= 2. * transform.scale.y;
         }
     }
 
@@ -420,16 +434,29 @@ fn process_inputs_system(
             }
         }
 
+
+    // Reset to pos
+    if keys.just_released(KeyCode::Tab) {
+            let mut cam_transform = q_transform.single_mut();
+        
+            let pos = vec3(0., 5000., 10000.);
+            cam_transform.translation = pos;
+    
+            // Teleport camera to clicked place
+            info!("Reset performed. Cameratransform: {:?}", cam_transform);       
+    }
+
+    
     // Node_Picking
     let window = q_window.single();
-    let (camera, camera_transform) = q_camera.single();
+    let (camera, mut camera_transform) = q_camera.single();
     let mut q_screen_text = q_screen_text_transform.iter_mut();
 
     if buttons.just_released(MouseButton::Left) {
         // let window = q_window.single();
         // let (camera, camera_transform) = q_camera.single();
         
-            for (transform, marker) in &mut tree {
+         //   for (transform, marker) in &mut tree {
 
                 if let Some(cam_ray) = window.cursor_position().and_then(|cursor| camera.viewport_to_world(camera_transform, cursor)){
 
@@ -441,44 +468,106 @@ fn process_inputs_system(
                             let cast_result = ray_cast.intersects(&branch);//BoundingSphereCast::from_ray(branch, world_position, 10000.);
                             if cast_result == true {
                                 
-                                if let Some((mut text,mut text_transform)) = q_screen_text.next(){
-                                        text_transform.translation.x = 0.;
-                                        text_transform.translation.y = 0.;
-                                        text.sections[0].value = tree_data.branches[i].name.clone();
-                                }
+                                // if let Some((mut text,mut text_transform)) = q_screen_text.next(){
+                                //         text_transform.translation.x = 0.;
+                                //         text_transform.translation.y = 0.;
+                                //         text.sections[0].value = tree_data.branches[i].name.clone();
+                                // }
 
                                 //Terminalmagic
 
+                                // Cat Example
                                 // let output = Command::new("/bin/cat")
                                 //                     .arg("file.txt")
                                 //                     .output()
                                 //                     .expect("failed to execute process");
-
                                 // println!("status: {}", output.status);
                                 // println!("stdout: {}", String::from_utf8_lossy(&output.stdout));
                                 // println!("stderr: {}", String::from_utf8_lossy(&output.stderr));
-
                                 // assert!(output.status.success());
 
-                                let output = Command::new("mkdir")
-                                .arg(tree_data.branches[i].name.clone().to_string() + "/OoOoO")
-                                .spawn()
-                                .expect("Mkdir command failed to start");
+                                // Create Folder with a click
+                                // let output = Command::new("mkdir")
+                                // .arg(tree_data.branches[i].name.clone().to_string() + "/OoOoO")
+                                // .spawn()
+                                // .expect("Mkdir command failed to start");
 
-                                println!("Terminalcommand!: {:?}", output);
+
+                                // Ls
+                                // let mut output = Default::default();
+                                // let ls = Command::new("ls")
+                                // .arg(tree_data.branches[i].name.clone().to_string())
+                                // .spawn()
+                                // .expect("ls command failed to start")
+                                // .stdout.take().unwrap().read_to_string(&mut output);
+
+                                // List files with click // Needs own word list or 3d spawn in world, right now only blinking shortly but it works
+                                
+                                info!("TreeBranchName: {:?}",tree_data.branches[i].name);
+
+                                let mut cnt = 0.;
+                                for entry in WalkDir::new(tree_data.branches[i].name.clone().to_string()).max_depth(1).into_iter().filter_map(|e| e.ok()) {
+                                    println!(": {:?} :", entry.path());
+                                    if entry.file_type().is_file() || entry.file_type().is_symlink() {
+                                        if let Some((mut text,mut text_transform)) = q_screen_text.next(){
+                                            text_transform.translation.x = -200.;
+                                            text_transform.translation.y = 200. - 10.* cnt;
+                                            text.sections[0].value = entry.file_name().to_str().unwrap().to_string();
+                                            cnt += 2.;
+                                        }
+                                    }
+                                    else {
+                                        info!("No files here. Path: {:?}", entry.path());
+                                    }
+                                }
+                                
+                                // Click on node to translate all points around the center point by substracting clicked point from every point?
+                                // To then be able to scale from it 
+
 
                             }
                         }
-                        println!("Closed \n");
+                        println!("LeftMouseButton release bounds loop finished: Iterating files \n");
+                    }
+                }
+           // }
+    }
+
+    // Cam teleport to right click, somehow kills later klick detection TODO
+    if buttons.just_released(MouseButton::Right) {
+
+        if let Some(cam_ray) = window.cursor_position().and_then(|cursor| camera.viewport_to_world(camera_transform, cursor)){
+
+            if let Some(tree_data) = &mut tree_data {
+
+                let ray_cast = RayCast3d::from_ray(cam_ray, 10000.);
+
+                for (i, branch, ) in tree_data.bounds.clone().into_iter().enumerate(){
+                    let cast_result = ray_cast.intersects(&branch);//BoundingSphereCast::from_ray(branch, world_position, 10000.);
+                    if cast_result == true {
+
+                        let mut cam_transform = q_transform.single_mut();
+                        
+                        cam_transform.translation = branch.center;//Vec3::splat(1000.);//0.9 * (cam_transform.translation - branch.center);//branch.center - cam.pos;
+                        cam.pos = cam_transform.translation;
+
+                        // Teleport camera to clicked place
+                        info!("Teleporting camera, Cameratransform: {:?}", cam.pos);
                     }
                 }
             }
+        }
     }
 
-    // Updates node information in cameraview
+
+
+    // #TODO:
+    // Updates node information in cameraview // Depending on Bounding sphere, needs second check if bounding finds are really in view
     if let Some(tree_data) = &mut tree_data {
         // Places the bounding sphere a bit in front of the camera, bounding box at viewplane may be more usefull
-        let bound_sphere = BoundingSphere::new(camera_transform.forward().mul_add(Vec3 { x: 0., y: 0., z: 220. }, camera_transform.translation()), 200.0);
+        // let bound_sphere = BoundingSphere::new(camera_transform.forward().mul_add(Vec3 { x: 0., y: 0., z: 6000. }, camera_transform.translation()), 10000.0);
+        let bound_sphere = BoundingSphere::new(camera_transform.transform_point(camera_transform.to_scale_rotation_translation().1.mul_vec3(Vec3 { x: 0., y: 0., z: 6000. })), 10000.0);
+        
         // let mut q_screen_text = q_screen_text_transform.iter_mut();
         for (i, branch, ) in tree_data.bounds.clone().into_iter().enumerate(){
             let cast_result = bound_sphere.intersects(&branch);//BoundingSphereCast::from_ray(branch, world_position, 10000.);
@@ -493,7 +582,14 @@ fn process_inputs_system(
                         text_transform.translation.y = screen_position.y * window.height()*0.5;// - window.height()/2.;
                         text_transform.translation.z = screen_position.z;
 
-                        text.sections[0].value = tree_data.branches[i].name.clone();// + " " + &screen_position.x.to_string() + " " + &screen_position.y.to_string();
+                        // #TODO:
+                        // Following should be Switchable
+
+                        // Whole path
+                        // text.sections[0].value = tree_data.branches[i].name.clone();// + " " + &screen_position.x.to_string() + " " + &screen_position.y.to_string();
+                        
+                        // Only Current folder
+                        text.sections[0].value = tree_data.branches[i].name.clone().rsplit_once("/").unwrap().1.to_string();
                     }
                 }
             }
@@ -522,7 +618,10 @@ fn animate_light_direction(
 ) {
     // println!("Cam: {:?}", q_cam.single_mut().pos);
     for mut transform in &mut query {
+        
         // *transform = Transform::from_rotation(q_cam.single_mut().rot) * Transform::from_xyz(0.0, q_cam.single_mut().pos.y+0.0, 0.0);
-        //transform.rotate_y(time.delta_seconds() * 0.5);
+        // *transform = Transform::from_rotation(q_cam.single_mut().rot) * Transform::from_xyz(q_cam.single_mut().pos.x, q_cam.single_mut().pos.y+0.0, q_cam.single_mut().pos.z);
+
+        // transform.rotate_y(time.delta_seconds() * 0.5);
     }
 }

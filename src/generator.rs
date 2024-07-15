@@ -56,7 +56,7 @@ pub fn walk_path_to_mesh(entry_path: &str, generation_type: GenerationType, dept
     let mut line_list_vertices: Vec<Vec3> = vec![];
     let mut line_strip_vertices: Vec<Vec3> = vec![];
 
-    let font_data = include_bytes!("/home/nom/code/rust/storytree/assets/fonts/Roboto-Regular.ttf");
+    let font_data = include_bytes!("../assets/fonts/Roboto-Regular.ttf");
     let mut generator = MeshGenerator::new_with_quality(font_data, QualitySettings{quad_interpolation_steps:1,cubic_interpolation_steps:1});
     let common = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789".to_string();
     // Precache both flat and three-dimensional glyphs both for indexed and non-indexed meshes.
@@ -479,12 +479,13 @@ pub fn extend_space_vec(space_vertices: &mut Vec<[f32; 3]>, space_indices: &mut 
         // Convert the transformation matrix to Mat4
         // let transform_matrix = Mat4::from_cols_array(&transform);
 
+        //info!("Scale: {}",*transform);
+
         // Create a Bevy Transform component
-        let transform = Transform::from_matrix(transform.clone());
-    
+        let transform = Transform::from_matrix(*transform);//.clone());
         for each in ground_vertices {
             // Convert each input vector to Vec3
-            let position_vector = Vec3::new(each[0], each[1], each[2])*Vec3::splat(0.3);//.mul(0.10147); // Multiplied by scaling factor
+            let position_vector = Vec3::new(each[0], each[1], each[2])*Vec3::splat(transform.scale.y);//.mul(0.10147); // Multiplied by scaling factor
 
             // Perform the vector transformation using Bevy's Transform component
             // let transformed_vector : Mat4 = transform.transform_point(position_vector);
