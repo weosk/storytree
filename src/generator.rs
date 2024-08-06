@@ -10,7 +10,7 @@ use walkdir::{WalkDir, DirEntry};
 
 use meshtext::{MeshGenerator, MeshText, TextSection, QualitySettings, Face};
 use std::collections::LinkedList;
-use std::f32::consts::PI;
+use std::f32::consts::PI    ;
 use std::time::Instant;
 
 use std::ops::{Mul, Range};
@@ -62,7 +62,7 @@ pub fn walk_path_to_mesh(entry_path: &str, generation_type: GenerationType, dept
     // Precache both flat and three-dimensional glyphs both for indexed and non-indexed meshes.
     generator.precache_glyphs(&common, false, None);
     generator.precache_glyphs(&common, true, None);
-
+    
     let mut transform: Mat4;
     let mut parent_transform: Mat4; 
     for entry in WalkDir::new(entry_path).max_depth(depth).sort_by(|a,b| a.file_name().cmp(b.file_name())).into_iter().filter_map(|e| e.ok()) {
@@ -176,7 +176,7 @@ fn next_branch_transform(path: &str) -> Mat4 {
         // Iterate over dirs and calculate a transform for each one / word iterater == depth, angle given through string
         // println!("{:?}", path);
         for (i, dir) in dirs.enumerate() {
-
+            
             if !dir.is_empty(){
                 translation.z = 1.;
                 translation.y += 4.;
@@ -297,13 +297,12 @@ fn next_branch_transform(path: &str) -> Mat4 {
     transform
 }
 
-
 // Take lessons from branching and create nested nests
 fn next_tree_transform(cnt: f32, entry: &DirEntry) -> Mat4{
     let mut transform :Mat4 = Default::default();
     transform
 }
-
+    
 // Include Range, governed by count directories, split to 360 / numDirs - Adjusted by alphanumeric value in new range
 fn get_angle(mut current_angle: f32, c: char, word_num: usize, char_num: usize) -> f32
 {

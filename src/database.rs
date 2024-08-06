@@ -171,7 +171,7 @@ impl Tree {
     }
 
     // Wrapper method for the recursive dive to provide the mesh
-    pub fn grow(&mut self, name: &mut str) -> Mesh {
+    pub fn grow(&mut self, name: &mut str, mut param_set: (f32,f32,f32,f32)) -> Mesh {
 
         let mut line_mesh : Mesh = Mesh::new(PrimitiveTopology::LineList, RenderAssetUsages::default());
         let mut line_vertices: Vec<Vec3> = vec![];
@@ -179,7 +179,7 @@ impl Tree {
         // info!("Root Children1:{:?}",self.branches[0].children);
 
         // dive to count all the subfolders
-        info!("All Subfolders: {:?}",dive_to_count(0, &mut self.branches)); 
+        // info!("All Subfolders: {:?}",dive_to_count(0, &mut self.branches)); 
 
         // for i in 0..10 {
         //     info!("i: {:?} Children: {:?}",i ,self.branches[i].children);
@@ -191,9 +191,10 @@ impl Tree {
         dive_to_sort(0,&mut self.branches);
 
         // dive to construct
-        dive(name,0, &mut self.branches, &mut line_vertices);
+//        dive(name,0, &mut self.branches, &mut line_vertices);
+        param_dive(name,0, &mut self.branches, &mut line_vertices,  param_set);
 
-        info!("Number of branches: {}", self.branches.len());
+        // info!("Number of branches: {}", self.branches.len());
 
         line_mesh.insert_attribute(Mesh::ATTRIBUTE_POSITION, line_vertices);
         line_mesh
@@ -207,13 +208,13 @@ impl Tree {
         let mut node_indices:  Vec<u32> = vec![];
 
         for (cnt, branch) in self.branches.clone().into_iter().enumerate() {
-            generator::extend_space_vec(&mut node_vertices, &mut node_indices, &branch.transform.compute_matrix(), cnt as f32);
+            generator::extend_space_vec(&mut node_vertices, 
+                                        &mut node_indices, 
+                                        &branch.transform.compute_matrix(), cnt as f32);
 
             // Populate bounds
-            self.bounds[cnt].sphere = primitives::Sphere{ radius: branch.transform.scale.y };//branch.transform.scale;
-            self.bounds[cnt].center = branch.transform.translation;//compute_matrix().transform_point(Vec3::splat(0.));
-            // println!("Bounds: {:?}, {:?}", self.bounds[cnt].center, self.bounds[cnt].sphere);
-            // println!("Transform: {:?}", branch.transform);
+            self.bounds[cnt].sphere = primitives::Sphere{ radius: branch.transform.scale.y };
+            self.bounds[cnt].center = branch.transform.translation;
         }
 
         let space_uvs = vec![[0f32, 0f32]; node_vertices.len()];
@@ -221,11 +222,14 @@ impl Tree {
         node_mesh.insert_attribute(Mesh::ATTRIBUTE_POSITION, node_vertices.clone());
         node_mesh.insert_indices(mesh::Indices::U32(node_indices));
         node_mesh.insert_attribute(Mesh::ATTRIBUTE_UV_0, space_uvs);
-        node_mesh.insert_attribute(Mesh::ATTRIBUTE_NORMAL, node_vertices); // Normals are just the vertex positions as we go out from 0,0,0
+        node_mesh.insert_attribute(Mesh::ATTRIBUTE_NORMAL, node_vertices); 
+        // Normals are just the vertex positions as we go out from 0,0,0
     
         node_mesh
     }
 
+    // println!("Bounds: {:?}, {:?}", self.bounds[cnt].center, self.bounds[cnt].sphere);
+    // println!("Transform: {:?}", branch.transform);
 }
 
 // Returns number of subfolder count
@@ -277,137 +281,96 @@ fn dive_to_sort(index: usize, branches: &mut Vec<Branch>) {
 }
 
 
-// Standart swirl
-// spiral_transform.rotate_y(PI/128.);
-// spiral_transform.rotate_y(PI/16.);
-
-// Plantlike
-// spiral_transform.rotate_y(4.*PI/(index as f32+0.5) as f32);
-
-// Spiral swirl
-// spiral_transform.rotate_y();
-
-// ProvenTrees
-// extending_factor = 40;
-// spiral_transform.translation.y = 1. * scale;
-// spiral_transform.translation.z = 0.333 * scale;
-
-// Fixed variant for small data:
-// spiral_transform.rotate_y(PI/16.);
-
-// Variable variant for big data:
-// spiral_transform.rotate_y(4.*PI/(index as f32+0.5) as f32);
-fn dive(name:&mut str, index: usize, branches: &mut Vec<Branch>, line_vertices: &mut Vec<Vec3>) -> () {
-
-    // if index <= 100 {
-    //     info!("\nIndex : {:?}\nParent: {:?}\nSiblings: {:?}",index, branches[index].parent, branches[branches[index].parent].children);   
-    // }
-    if branches.len() > index {
-        let mut pos: Vec3 = Vec3::splat(0.);
-        let mut last_pos: Vec3 = Vec3::splat(0.);
-        let mut extending_factor = 40;//20;//branches[index].children;//20;
-        let children = branches[index].children.clone();
-        let mut inner_child_index: usize = 0;
-
-        let mut transform = branches[index].transform;
-        pos = transform.translation;//transform.transform_point(Vec3::splat(0.)); 
-        last_pos = pos;
-
-        let mut spiral_pos = Vec3::splat(0.);
-        let mut spiral_transform = Transform::default();
-
-        let mut scale = 2.;//0.1*(10. - branches[index].depth as f32 * 3.);
-
-        if true {
-            scale = 10. -0.5 * branches[index].depth as f32;
-            extending_factor = branches[index].num_of_all_children+1;//70;//10 *scale as i32;
-            if extending_factor > 30 {
-                extending_factor = 30;
-            }
-        }
-        else { 
-            // spiral_transform.translation.y = 0.5 * scale;//* scale;
-            // spiral_transform.translation.z = 0.333 * scale * 10.;// * scale;
-            // spiral_transform.rotate_y(PI/16.);
-        }
-
-        let scale = Vec3::splat(scale);
-        let mut z = 0;
-
-        let vertex_iteration = (branches[index].children.len() as i32 * extending_factor) - 0;
-        for i in 0..vertex_iteration { // Number of vertices of branch
-            if index == 0 {
-
-                spiral_transform.translation.x =0.7*scale.x *  i as f32 *(i as f32 * PI/27.).cos(); //8.*
-                spiral_transform.translation.y =1.*scale.y *(1.-E.powf(-1.*i as f32));//i as f32 ;//8.*
-                spiral_transform.translation.z =0.7*scale.z *  i as f32  *(i as f32 * PI/27.).sin();//8.*
-                // extending_factor = 100;
-            } 
-            else if index == *branches[branches[index].parent].children.last().unwrap() {
-                // info!("DepthLast: {:?} Index: {:?}", branches[index].depth, index);
-
-                let scale = Vec3::splat(0.1);
-                spiral_transform.translation.x =1.*scale.x *  i as f32 *(i as f32 * PI/16.).cos(); //8.*
-                spiral_transform.translation.y =branches[index].depth as f32*1.+1.*(1.-E.powf(-1.*i as f32));//i as f32 ;//8.*
-                spiral_transform.translation.z =-0.1*i as f32+1.*scale.z   *(i as f32 * PI/16.).sin();//8.*
-                // extending_factor = 100;
-            }  
-            else {
-                spiral_transform.translation.x =0.1*i as f32 *scale.x *(i as f32 * PI/16.).cos(); //8.*
-                spiral_transform.translation.y =0.2*scale.y *(1.-E.powf(-1.*i as f32));//i as f32 ;//8.*
-                spiral_transform.translation.z =-0.01*i as f32 + 0.5*scale.z *(i as f32 * PI/16.).sin();//8.*
+    fn param_dive(name:&mut str, index: usize, branches: &mut Vec<Branch>, line_vertices: &mut Vec<Vec3>,mut param_set: (f32,f32,f32,f32)) -> () {
+        if branches.len() > index {
+            
+            let mut pos: Vec3 = Vec3::splat(0.);
+            let mut last_pos: Vec3 = Vec3::splat(0.);
+            let mut extending_factor = 40;//20;//branches[index].children;//20;
+            let children = branches[index].children.clone();
+            let mut inner_child_index: usize = 0;
+    
+            let mut transform = branches[index].transform;
+            pos = transform.translation;//transform.transform_point(Vec3::splat(0.)); 
+            last_pos = pos;
+    
+            let mut spiral_pos = Vec3::splat(0.);
+            // let mut spiral_pos = vec3(2000., 0., 0.);
+    
+            let mut spiral_transform = Transform::default();
+    
+            
+            let mut scale = param_set.0 * param_set.1.powf(branches[index].depth as f32);
+            
+            if branches[index].depth == 0 {
+                scale = param_set.0 * param_set.1 * branches[index].depth as f32;
             }
 
-            // Spiraling Up
-            spiral_pos = spiral_transform.transform_point(spiral_pos);
-            // Rotate into formerly given direction
-            pos = Transform::from_rotation(transform.rotation).transform_point(spiral_pos);
-            // Translate to formerly given position
-            pos = Transform::from_translation(transform.translation).transform_point(pos);
+            let vertex_iteration = (branches[index].children.len() as i32 * extending_factor) - 0;
 
-            // Assigning the node
-            if i % extending_factor == extending_factor - 1 {
-                if branches.len() > children[inner_child_index] { // To prevent len == index for /
-                    let dir = pos - last_pos;
-                    
-                    let mut rts = spiral_transform;
+            for mut i in 0..vertex_iteration { // Number of vertices of branch
 
-                    // Branch of from pos with last pos to pos direction
-                    // rts.look_to(dir.normalize().any_orthonormal_vector(), dir);
+                // spiral_transform.translation.x =scale*0.001*i as f32 * (i as f32 * PI/16.).cos() + scale* 10.*(1.-1.*E.powf(-0.0001*i as f32)) * 1.*(1./64.*i as f32 * PI/16.).cos();
+                // spiral_transform.translation.y =scale* 0.5;//0.5;//0.2;
+                // spiral_transform.translation.z =scale*0.001*i as f32 * (i as f32 * PI/16.).sin() + scale* 10.*(1.-1.*E.powf(-0.0001*i as f32)) * 1.*(1./64.*i as f32 * PI/16.).sin();
 
-                    if index == *branches[branches[index].parent].children.last().unwrap() {
-                        // rts = rts.with_translation(branches[branches[index].parent].transform.translation + Vec3 {x: 0., y: 1000., z: 0. });
-                        rts.look_to( pos, pos.normalize().any_orthonormal_vector());//Vec3 {x: 0., y: 1., z: 0. });
-                        rts = rts.with_translation(pos);
-                        rts = rts.with_scale(scale);
+                
+                // spiral_transform.translation.x = scale * (param_set.2 * (i as f32 * PI/16. * param_set.3).cos() + param_set.0 * i as f32);// + scale* 10.*(1.-1.*E.powf(-0.0001*i as f32)) * 1.*(1./64.*i as f32 * PI/16.).cos();
+                // spiral_transform.translation.y = scale * param_set.2 * i as f32 *  0.3;//param_set.0 + scale* 1.;
+                // spiral_transform.translation.z = scale * (param_set.2 * (i as f32 * PI/16. * param_set.3).sin() + param_set.0 * i as f32);// + scale* 10.*(1.-1.*E.powf(-0.0001*i as f32)) * 1.*(1./64.*i as f32 * PI/16.).sin();
 
+                spiral_transform.translation.x =scale* (0.001*i as f32 * (i as f32 * PI/16.).cos() + scale* 10.*(1.-1.*E.powf(-0.0001*i as f32)) * 1.*(1./64.*i as f32 * PI/16.).cos());
+                spiral_transform.translation.y =scale* 1.;//0.5;//0.2;
+                spiral_transform.translation.z =scale* (0.001*i as f32 * (i as f32 * PI/16.).sin() + scale* 10.*(1.-1.*E.powf(-0.0001*i as f32)) * 1.*(1./64.*i as f32 * PI/16.).sin());
+           
+
+
+                // Spiraling Up
+                spiral_pos = spiral_transform.transform_point(spiral_pos);
+                // Rotate into formerly given direction
+                pos = Transform::from_rotation(transform.rotation).transform_point(spiral_pos);
+                // Translate to formerly given position
+                pos = Transform::from_translation(transform.translation).transform_point(pos);
+
+
+                if i % extending_factor == extending_factor - 1 {
+                    if branches.len() > children[inner_child_index] { // To prevent len == index for /
+                        let dir = pos - last_pos;
+                        
+                        let mut rts = spiral_transform;
+
+                        if children[inner_child_index] == *children.last().unwrap() {
+                            rts = rts.with_rotation(branches[branches[index].parent].transform.rotation);
+                            rts = rts.with_translation(pos);
+                            rts = rts.with_scale(Vec3::splat(scale));
+
+                        }
+                        else {
+                            // rts.look_to(  pos.normalize().any_orthogonal_vector(), pos.normalize());// * Vec3 {x: 1., y: 0., z: 1. });
+                            rts.look_to(  pos.normalize(), Vec3 {x: 0., y: 1., z: 0. });// * Vec3 {x: 1., y: 0., z: 1. });
+
+                            rts = rts.with_translation(pos);
+                            rts = rts.with_scale(Vec3::splat(scale));
+                        }    
+                        branches[children[inner_child_index]].transform = rts;
+                        inner_child_index += 1;
                     }
-                    else {
-                        rts.look_to(pos, Vec3 {x: 0., y: 1., z: 0. });
-                        rts = rts.with_translation(pos);
-                        rts = rts.with_scale(scale);
-
-                    }    
-                    // info!("\nIndex : {:?}\nParent: {:?}\nSiblings: {:?}",index, branches[index].parent, branches[branches[index].parent].children);
-
-                    branches[children[inner_child_index]].transform = rts;
-                    inner_child_index += 1;
                 }
+                    line_vertices.push(last_pos);
+                    line_vertices.push(pos);
+                    last_pos = pos;
             }
-                line_vertices.push(last_pos);
-                line_vertices.push(pos);
-                last_pos = pos;
-        }
 
-        for child_index in branches[index].children.clone() {
-            if !(branches.len() < child_index) {
-                // println!("ChildIndex: {:?} \nBranchesLen: {:?}", child_index, branches.len());
-                dive(name, child_index, branches, line_vertices);
+            param_set.0 -= 0.1;
+            param_set.2 += 0.1;
+
+            for child_index in branches[index].children.clone() {
+                if !(branches.len() < child_index) {
+                    param_dive(name, child_index, branches, line_vertices, param_set);
+                }
             }
         }
     }
-}
-
 
     fn get_parent_path(path: &str) -> String{
         let parent_string: String = match path.rsplit_once("/") {
@@ -496,3 +459,341 @@ pub fn count_directories(path: &str) -> i32
         // println!("Count: {:?}",cnt);
          cnt 
 }
+
+
+
+///
+/// Old Dive: 
+/// 
+
+
+
+
+// Standart swirl
+// spiral_transform.rotate_y(PI/128.);
+// spiral_transform.rotate_y(PI/16.);
+
+// Plantlike
+// spiral_transform.rotate_y(4.*PI/(index as f32+0.5) as f32);
+
+// Spiral swirl
+// spiral_transform.rotate_y();
+
+// ProvenTrees
+// extending_factor = 40;
+// spiral_transform.translation.y = 1. * scale;
+// spiral_transform.translation.z = 0.333 * scale;
+
+// Fixed variant for small data:
+// spiral_transform.rotate_y(PI/16.);
+
+// Variable variant for big data:
+// spiral_transform.rotate_y(4.*PI/(index as f32+0.5) as f32);
+
+// Parameterset: 
+// A tupel list that is given by reference for the whole dive, containing switches and concrete parameters like
+// Extending Faktor
+// Scale                                // Both as functions?
+// SpiralTransform Parameter: a few...
+// Orientation Mode
+
+fn dive(name:&mut str, index: usize, branches: &mut Vec<Branch>, line_vertices: &mut Vec<Vec3>) -> () {
+
+    // if index <= 100 {
+    //     info!("\nIndex : {:?}\nParent: {:?}\nSiblings: {:?}",index, branches[index].parent, branches[branches[index].parent].children);   
+    // }
+    if branches.len() > index {
+        let mut pos: Vec3 = Vec3::splat(0.);
+        let mut last_pos: Vec3 = Vec3::splat(0.);
+        let mut extending_factor = 40;//20;//branches[index].children;//20;
+        let children = branches[index].children.clone();
+        let mut inner_child_index: usize = 0;
+
+        let mut transform = branches[index].transform;
+        pos = transform.translation;//transform.transform_point(Vec3::splat(0.)); 
+        last_pos = pos;
+
+        let mut spiral_pos = Vec3::splat(0.);
+        // let mut spiral_pos = vec3(2000., 0., 0.);
+
+        let mut spiral_transform = Transform::default();
+
+        let mut scale = 1.;//0.1*(10. - branches[index].depth as f32 * 3.);
+
+        if true {
+            extending_factor = branches[index].num_of_all_children+1;//70;//10 *scale as i32;
+            scale = 0.5;//2.;//1.;//10. -0.5 * branches[index].depth as f32;
+            if extending_factor > 40 {
+                extending_factor = 40;
+            }
+            if index == 0 {
+                extending_factor = 40;//1000;
+            }
+        }
+        else { 
+            // spiral_transform.translation.y = 0.5 * scale;//* scale;
+            // spiral_transform.translation.z = 0.333 * scale * 10.;// * scale;
+            // spiral_transform.rotate_y(PI/16.);            // spiral_transform.rotate_y(PI/16.);
+        }
+
+        // let scale = Vec3::splat(scale);
+        let mut z = 0;
+        let mut circle_cnt = 0;
+
+        let vertex_iteration = (branches[index].children.len() as i32 * extending_factor) - 0;
+
+        let mut first_dir_vec = Vec3::default();
+
+        for mut i in 0..vertex_iteration { // Number of vertices of branch
+            
+            if i == 7 {
+                first_dir_vec = pos - last_pos;
+            }
+            // if index == 0 {
+            //     spiral_transform.translation.x =0.7*scale.x *  i as f32 *(i as f32 * PI/27.).cos(); //8.*
+            //     spiral_transform.translation.y =1.*scale.y *(1.-E.powf(-1.*i as f32));//i as f32 ;//8.*
+            //     spiral_transform.translation.z =0.7*scale.z *  i as f32  *(i as f32 * PI/27.).sin();//8.*
+            //     // extending_factor = 100;
+            // } 
+            // else if index == *branches[branches[index].parent].children.last().unwrap() {
+            //     // info!("DepthLast: {:?} Index: {:?}", branches[index].depth, index);
+
+            //     let scale = Vec3::splat(0.1);
+            //     spiral_transform.translation.x =1.*scale.x *  i as f32 *(i as f32 * PI/16.).cos(); //8.*
+            //     spiral_transform.translation.y =branches[index].depth as f32*1.+1.*(1.-E.powf(-1.*i as f32));//i as f32 ;//8.*
+            //     spiral_transform.translation.z =-0.1*i as f32+1.*scale.z   *(i as f32 * PI/16.).sin();//8.*
+            //     // extending_factor = 100;
+            // }  
+            // else {
+            //     spiral_transform.translation.x =0.1*i as f32 *scale.x *(i as f32 * PI/16.).cos(); //8.*
+            //     spiral_transform.translation.y =0.2*scale.y *(1.-E.powf(-1.*i as f32));//i as f32 ;//8.*
+            //     spiral_transform.translation.z =-0.11*i as f32 + 0.5*scale.z *(i as f32 * PI/16.).sin();//8.*
+            // }
+
+
+            if false {//index  == 0 {
+            //     spiral_transform.translation.x =0.7*scale.x *  i as f32 *(i as f32 * PI/27.).cos(); //8.*
+
+            //     if false{// i < extending_factor {
+            //         spiral_transform.translation.y =40.;//4. *scale.y * (1.-E.powf(-1.*i as f32));//i as f32 ;//8.*
+            //     }
+            //     else {
+            //         spiral_transform.translation.y =2. *scale.y * (0.5-E.powf(-1.*i as f32));//i as f32 ;//8.*
+            //     }
+            //     spiral_transform.translation.z =0.7*scale.z *  i as f32  *(i as f32 * PI/27.).sin();//8.*
+            //     // extending_factor = 100;
+
+                spiral_transform.translation.x =0.7 *  i as f32 *(i as f32 * PI/27.).cos(); //8.*
+                spiral_transform.translation.y =2.  * (0.5-E.powf(-1.*i as f32));//i as f32 ;//8.*
+                spiral_transform.translation.z =0.7 *  i as f32  *(i as f32 * PI/27.).sin();//8.*
+
+                // spiral_transform.translation.x = (i as f32 * PI/16.).cos() + 1.*(1./32.*i as f32 * PI/16.).cos();
+                // spiral_transform.translation.y = 0.5;
+                // spiral_transform.translation.z = (i as f32 * PI/16.).sin() + 1.*(1./32.*i as f32 * PI/16.).sin();
+            } 
+            else if false {// index == *branches[branches[index].parent].children.last().unwrap() {
+                // info!("DepthLast: {:?} Index: {:?}", branches[index].depth, index);
+
+                // let scale = Vec3::splat(0.1);
+                // spiral_transform.translation.x =1.*scale.x *  i as f32 *(i as f32 * PI/16.).cos(); //8.*
+                // spiral_transform.translation.y =3. + branches[index].depth as f32*1.+1.*(1.-E.powf(-1.*i as f32));//i as f32 ;//8.*
+                // spiral_transform.translation.z =-0.1*i as f32+1.*scale.z   *(i as f32 * PI/16.).sin();//8.*
+                // // extending_factor = 100;
+
+                // let scale = Vec3::splat(0.1);
+                // spiral_transform.translation.x =1.*scale.x *  i as f32 *(i as f32 * PI/16.).cos(); //8.*
+                // spiral_transform.translation.y =3. + branches[index].depth as f32*1.+1.*(1.-E.powf(-1.*i as f32));//i as f32 ;//8.*
+                // spiral_transform.translation.z =-0.1*i as f32+1.*scale.z   *(i as f32 * PI/16.).sin();//8.*
+
+                // Growing Sprial Funnel
+                spiral_transform.translation.x = 40.*(1.-1.*E.powf(-0.0001*i as f32)) * (i as f32 * PI/12.).cos() //- 1.*(1./128.*circle_cnt as f32 * PI/16.).cos();    
+                ;//+ 400.*(1.-1.*E.powf(-0.001*i as f32)) * (i as f32 * PI/16.).cos();
+                spiral_transform.translation.y = 0.2; //10.*(1.-1.*E.powf(-0.0001*i as f32)) * (i as f32 * PI/16.).sin();
+                spiral_transform.translation.z = 40.*(1.-1.*E.powf(-0.0001*i as f32)) * (i as f32 * PI/12.).sin() //+ 1.*(1./128.*circle_cnt as f32 * PI/16.-PI/2.).sin();
+                ;//+400.*(1.-1.*E.powf(-0.001*i as f32)) * (i as f32 * PI/16.).sin();
+                // (0.5-E.powf(-1.*i as f32))
+
+                     }  
+            else {
+                // spiral_transform.translation.x =            0.01*scale.x *(i as f32 * PI/16.).cos(); //8.*
+                // spiral_transform.translation.y =0.001*scale.y *(1.-E.powf(-1.*i as f32));//i as f32 ;//8.*
+                // spiral_transform.translation.z =-0.001*i as f32 + 0.5*scale.z *(i as f32 * PI/16.).sin();//8.*
+
+                // spiral_transform.translation.x =            0.01*scale.x *(i as f32 * PI/16.).cos(); //8.*
+                // spiral_transform.translation.y =0.001*scale.y *(1.-E.powf(-1.*i as f32)) + 10.;//i as f32 ;//8.*
+
+                // spiral_transform.translation.z =-0.001*i as f32 + 0.5*scale.z *(i as f32 * PI/16.).sin();//8.*
+
+                // if i % 1 == 0 {
+                //     circle_cnt += 1;
+                // }
+
+                // spiral_transform.translation.x = - 15.*(1.-E.powf(-1.*i as f32)) * (i as f32 * PI/16.).cos(); //- 1.*(1./128.*circle_cnt as f32 * PI/16.).cos();
+                // spiral_transform.translation.y = 0.2;
+                // spiral_transform.translation.z = - 15.*(1.-E.powf(-1.*i as f32)) * (i as f32 * PI/16.).sin(); //+ 1.*(1./128.*circle_cnt as f32 * PI/16.-PI/2.).sin();
+                
+                // info!("I: {:}", i);
+                // if true {//i < 1000 {    
+                //     spiral_transform.translation.x = 0.01*i as f32 * (i as f32 * PI/16.).cos(); //- 1.*(1./128.*circle_cnt as f32 * PI/16.).cos();    
+                //     spiral_transform.translation.y = 0.2;
+                //     spiral_transform.translation.z = 0.01*i as f32 * (i as f32 * PI/16.).sin(); //+ 1.*(1./128.*circle_cnt as f32 * PI/16.-PI/2.).sin();
+                // }
+                // else {
+                //     spiral_transform.translation.x = 10. * (i as f32 * PI/16.).cos(); //- 1.*(1./128.*circle_cnt as f32 * PI/16.).cos();    
+                //     spiral_transform.translation.y = 0.2;
+                //     spiral_transform.translation.z = 10. * (i as f32 * PI/16.).sin(); //+ 1.*(1./128.*circle_cnt as f32 * PI/16.-PI/2.).sin(); 
+                // }
+
+                // Wingling Big Spiral
+            //     }
+            //
+
+        }
+                    let mut save_i = i;
+                    if children[inner_child_index] == *children.last().unwrap() {
+                        // i = branches[children[inner_child_index]].parent\
+                        // if branches[branches[index].parent].num_of_children > 40 {
+                        //     i += branches[branches[index].parent].num_of_children * 40;
+                        // }
+                        // else  {
+                        //     i += branches[branches[index].parent].num_of_children * branches[branches[index].parent].num_of_all_children;
+                        // }
+                    }
+                    if true {
+                        // scale = 10. * branches[index].num_of_all_children as f32 / branches[branches[index].parent].num_of_all_children as f32;
+                        // if index == *branches[branches[index].parent].children.last().unwrap() || index == 0{
+                        // spiral_transform.translation.x =scale* 0.001*i as f32 + (i as f32 * PI/16.).cos() + 10.*(1.-1.*E.powf(-0.0001*i as f32)) * 1.*(1./64.*i as f32 * PI/16.).cos();
+                        // spiral_transform.translation.y =scale* 1.;//0.2;
+                        // spiral_transform.translation.z =scale* 0.001*i as f32 + (i as f32 * PI/16.).sin() + 10.*(1.-1.*E.powf(-0.0001*i as f32)) * 1.*(1./64.*i as f32 * PI/16.).sin();
+
+                        scale = 1.;
+                        spiral_transform.translation.x =scale*0.001*i as f32 * (i as f32 * PI/16.).cos() + scale* 10.*(1.-1.*E.powf(-0.0001*i as f32)) * 1.*(1./64.*i as f32 * PI/16.).cos();
+                        spiral_transform.translation.y =scale* 0.5;//0.5;//0.2;
+                        spiral_transform.translation.z =scale*0.001*i as f32 * (i as f32 * PI/16.).sin() + scale* 10.*(1.-1.*E.powf(-0.0001*i as f32)) * 1.*(1./64.*i as f32 * PI/16.).sin();
+                   
+                    }
+                    else {
+                        // spiral_transform.translation.x =1.*scale.x *  i as f32 *(i as f32 * PI/16.).cos(); //8.*
+                        // spiral_transform.translation.y =3. + branches[index].depth as f32*1.+1.*(1.-E.powf(-1.*i as f32));//i as f32 ;//8.*
+                        // spiral_transform.translation.z =-0.1*i as f32+1.*scale.z   *(i as f32 * PI/16.).sin();//8.*
+                        spiral_transform.translation.x = 0.5 * i as f32 *(i as f32 * PI/16.).cos(); //8.*
+                        spiral_transform.translation.y = 3. + branches[index].depth as f32*1.+1.*(1.-E.powf(-1.*i as f32));//i as f32 ;//8.*
+                        spiral_transform.translation.z = -0.1*i as f32+ (i as f32 * PI/16.).sin();//8.*
+                    }
+                    if children[inner_child_index] == *children.last().unwrap() {
+                        i = save_i;
+                    }
+            // else {
+
+            // }
+
+            // spiral_transform.translation.x = (i as f32 * PI/16.).cos() + 1.*(1./32.*i as f32 * PI/16.).cos();
+            // spiral_transform.translation.y = 0.5;
+            // spiral_transform.translation.z = (i as f32 * PI/16.).sin() + 1.*(1./32.*i as f32 * PI/16.).sin();
+
+            // if i < vertex_iteration/2 as i32 {
+            //     spiral_transform.translation.x =2. * scale.x *(i as f32 * PI/27.).cos(); //8.*
+            //     spiral_transform.translation.y =3. * scale.y *(1.-E.powf(-1.*i as f32));//i as f32 ;//8.*
+            //     spiral_transform.translation.z =2. * scale.z  *(i as f32 * PI/27.).sin();//8.*
+
+
+
+            //     // spiral_transform.translation.x =0.7*scale.x *  i as f32 *(i as f32 * PI/27.).cos(); //8.*
+            //     // spiral_transform.translation.y =1.*scale.y *(1.-E.powf(-1.*i as f32));//i as f32 ;//8.*
+            //     // spiral_transform.translation.z =0.7*scale.z *  i as f32  *(i as f32 * PI/27.).sin();//8.*
+            // }
+            // else {
+                // spiral_transform.translation.x =0.01* i as f32 * scale.x *  (i as f32 * PI/27.).cos(); //8.*
+                // spiral_transform.translation.y =0.05 * scale.y *(1.-E.powf(-1.*i as f32));//i as f32 ;//8.*
+                // spiral_transform.translation.z =0.01*  i as f32 * scale.z *  (i as f32 * PI/27.).sin();//8.*
+
+            //     spiral_transform.translation.x =0.7*scale.x *  i as f32 *(i as f32 * PI/27.).cos(); //8.*
+            //     spiral_transform.translation.y =1.*scale.y *(1.-E.powf(-1.*i as f32));//i as f32 ;//8.*
+            //     spiral_transform.translation.z =0.7*scale.z *  i as f32  *(i as f32 * PI/27.).sin();//8.*
+            // }
+
+            // Spiraling Up
+            spiral_pos = spiral_transform.transform_point(spiral_pos);
+            // Rotate into formerly given direction
+            pos = Transform::from_rotation(transform.rotation).transform_point(spiral_pos);
+            // Translate to formerly given position
+            pos = Transform::from_translation(transform.translation).transform_point(pos);
+
+            // Assigning the node
+            if i % extending_factor == extending_factor - 1 {
+                if branches.len() > children[inner_child_index] { // To prevent len == index for /
+                    let dir = pos - last_pos;
+                    
+                    let mut rts = spiral_transform;
+
+                    // Branch of from pos with last pos to pos direction
+                    // rts.look_to(dir.normalize().any_orthonormal_vector(), dir);
+
+                    // if index == *branches[branches[index].parent].children.last().unwrap() {
+                    // if index == *branches[branches[index].parent].children.last().unwrap() {
+                    if children[inner_child_index] == *children.last().unwrap() {
+                        // rts = rts.with_translation(branches[branches[index].parent].transform.translation + Vec3 {x: 0., y: 1000., z: 0. });
+                        // rts.look_to( pos.normalize().any_orthonormal_vector(), pos);//Vec3 {x: 0., y: 1., z: 0. });
+                        // rts.look_to( Vec3 {x: 0., y: 1., z: 0. }, first_dir_vec.normalize());//Vec3 {x: 0., y: 1., z: 0. });
+                        // rts.look_to( Vec3 {x: 0., y: 0., z: -1. },Vec3 {x: 1., y: 0., z: 0. });//Vec3 {x: 0., y: 1., z: 0. });
+                        rts = rts.with_rotation(branches[branches[index].parent].transform.rotation);
+                        // rts = rts.with_translation(pos + index as f32 * vec3(1., 0., 0.));
+                        rts = rts.with_translation(pos);
+                        rts = rts.with_scale(Vec3::splat(scale));
+                        // rts.rotate_y(-PI/8.);
+
+
+                        // rts = branches[branches[index].parent].transform;
+                        // rts = rts.with_translation(pos);
+
+                        // rts = rts.with_translation(Vec3 { x: 200., y: 200., z: 0. });
+
+                        if index <100 {
+                            info!("Index: {:?} Path: {:?}",index, branches[index].name);
+                        }
+                    }
+                    else {
+                        // rts.look_to((pos - transform.translation).normalize().any_orthogonal_vector(), Vec3 {x: 0., y: 1., z: 0. });
+                        // rts.look_to( pos, Vec3 {x: 0., y: 1., z: 0. });//Vec3 {x: 0., y: 1., z: 0. });
+                        // rts.look_to( Vec3 {x: 0., y: 0., z: -1. },Vec3 {x: 0., y: 1., z: 0. });//Vec3 {x: 0., y: 1., z: 0. });
+                        // rts.look_to( dir, pos);//Vec3 {x: 0., y: 1., z: 0. });
+                        // rts.look_to( Vec3 {x: 0.,y: 1.,z: 0.,}, Vec3 {x: 0., y: 1., z: -1. });
+                        // rts.look_to( pos * Vec3 {x: 1.,y: 0.,z: 1.,}, Vec3 {x: 0., y: 1., z: 0. });
+                        // rts.look_to(Vec3 {x: 0., y: 1., z: 0. } ,pos.normalize().any_orthogonal_vector());
+                        // rts.rotate_y(PI/4.);
+                        // rts.look_to( Vec3 {x: 0., y: 1., z: 0. }, first_dir_vec.normalize());
+                        // rts.look_to(  Vec3 {x: 0., y: 1., z: 0. }, pos);// * Vec3 {x: 1., y: 0., z: 1. });
+                        rts.look_to(  pos.normalize().any_orthogonal_vector(), pos.normalize());// * Vec3 {x: 1., y: 0., z: 1. });
+                        
+                        // rts.rotate_x(-PI/4.);
+                        rts = rts.with_translation(pos);
+                        rts = rts.with_scale(Vec3::splat(scale));
+                        // rts.rotate_y(PI/16.);
+                        // rts.rotate_z(PI/4.);
+
+
+                    }    
+                    // info!("\nIndex : {:?}\nParent: {:?}\nSiblings: {:?}",index, branches[index].parent, branches[branches[index].parent].children);
+
+                    branches[children[inner_child_index]].transform = rts;
+                    inner_child_index += 1;
+                }
+            }
+                line_vertices.push(last_pos);
+                line_vertices.push(pos);
+                last_pos = pos;
+        }
+
+        for child_index in branches[index].children.clone() {
+            if !(branches.len() < child_index) {
+                // if child_index == *branches[index].children.last().unwrap(){
+                //     info!("Name: {:?}",branches[index].name);// = "last".to_owned();
+                // }
+                // println!("ChildIndex: {:?} \nBranchesLen: {:?}", child_index, branches.len());
+                dive(name, child_index, branches, line_vertices);
+            }
+        }
+    }
+}
+
+

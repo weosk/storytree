@@ -1,13 +1,20 @@
 //! A simple 3D scene with light shining over a cube sitting on a plane.
 
+// use nix::unistd::Uid;
+// fn main() {
+//     if !Uid::effective().is_root() {
+//         panic!("You must run this executable with root permissions");
+//     }
+// }
+
+
 use std::{env, f32::consts::PI, fs, io::Read, iter::Map};
 
 use bevy::{
     input::{keyboard::KeyCode, mouse::{MouseButtonInput, MouseMotion, MouseWheel}},
-    math::{bounding::{BoundingSphere, BoundingSphereCast, BoundingVolume, IntersectsVolume, RayCast3d}, primitives::Sphere, *}, pbr::{extract_meshes, wireframe::WireframeConfig}, 
+    math::{bounding::{BoundingSphere, BoundingSphereCast, BoundingVolume, IntersectsVolume, RayCast3d}, primitives::Sphere, *}, pbr::{extract_meshes, wireframe::WireframeConfig, CascadeShadowConfigBuilder}, 
     prelude::*,
-    pbr::CascadeShadowConfigBuilder,
-    render::{camera::ScalingMode, mesh::{self, Indices, PrimitiveTopology}, render_resource::{AsBindGroup, ShaderRef}, view::{RenderLayers, VisibleEntities}}, transform
+    render::{camera::ScalingMode, mesh::{self, Indices, PrimitiveTopology}, render_resource::{AsBindGroup, ShaderRef}, view::{RenderLayers, VisibleEntities}}, transform, utils::info
 };
 
 
@@ -44,7 +51,7 @@ fn main() {
 
     App::new()
         .add_plugins(DefaultPlugins)
-        .insert_resource(ClearColor(Color::rgb(0.31, 0.51, 0.21))) // Background 2 Darkblu
+        .insert_resource(ClearColor(Color::rgb(0.1, 0.01, 0.04))) // Background 2 Darkblu
         .add_systems(Startup, setup)
         .add_systems(Update, (bevy::window::close_on_esc, process_inputs_system, animate_light_direction))
         .insert_resource(AmbientLight {
@@ -70,47 +77,9 @@ fn setup(
 ) {
     // Default Spawn of Scene Spawning ///////////////////////////////////////////////////////
 
-    let mut main_tree = database::Tree::new();
-    // main_tree.construct("./TestTree/Tree".to_string()); // No end "/" allowed
-    // main_tree.construct("/home/nom/code/rust/storytree".to_string()); // No end "/" allowed
-    // main_tree.construct("/sys".to_string()); // No end "/" allowed
-    // main_tree.construct("./TestTree/Tree".to_string()); // No end "/" allowed
-    main_tree.construct("/".to_string()); // No end "/" allowed
-    // main_tree.construct("/sys/devices/pci0000:00".to_string()); // No end "/" allowed
-    // main_tree.construct("/sys/devices/pci0000:00/0000:00:02.0/drm".to_string());
-    let mut tree_name: String = "000".to_string();
-    commands.spawn((PbrBundle {
-        mesh: meshes.add(main_tree.grow(&mut tree_name)
-    ),
-        material: materials.add(
-            Color::rgba(16., 0., 0., 1.0),
-        ),
-        ..Default::default()
-        },
-        TreeMeshMarker,
-        RenderLayers::layer(0),
-        )
-        );
+    // spawn_tree("/home".to_string(), &mut commands, &mut meshes,&mut materials);
 
-    // Dodecas
-    commands.spawn((PbrBundle {
-        mesh: meshes.add(main_tree.mesh_nodes()
-    ),
-        material: materials.add(
-            Color::rgba(0.8, 0.4, 0.3, 1.0),
-        ),
-        ..Default::default()
-
-        },
-        TreeMeshMarker,
-        RenderLayers::layer(0),
-        )
-        );
-
-        commands.insert_resource(main_tree.clone());
-
-
-    // plane
+    // Plane
     commands.spawn(PbrBundle {
         mesh: meshes.add(Circle::new(5000000.)),
         material: materials.add(Color::rgb(1., 1., 1.)),
@@ -120,10 +89,12 @@ fn setup(
     });
 
     // Ui Bundle v , Probably needs Text2dBundle for precise positioning
-    let font = asset_server.load("fonts/Roboto-Thin.ttf");
+    let font = asset_server.load("fonts/Roboto-Bold.ttf");
     let text_style = TextStyle {
         font: font.clone(),
         font_size: 18.0,
+        // color: //Color::Rgba { red: 0., green: 0., blue: 0., alpha: 1. },
+        color: Color::GOLD,
         ..default()
     };
     let text_justification = JustifyText::Center;
@@ -132,7 +103,7 @@ fn setup(
     commands.spawn(Camera2dBundle{camera: Camera{order:1,..default()},..Default::default()});
 
     let mut cnt = 0;
-    for j in 0..10{
+    for j in 0..20{
         for i in 0..20{
             cnt += 1;
             commands.spawn((
@@ -278,6 +249,10 @@ fn process_inputs_system(
     mut commands: Commands,
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<StandardMaterial>>,
+
+    // mut wandering_pos: Local<f32>,
+    mut input_path: Local<String>,
+    mut char_input_flag: Local<f32>
 ) {
 
     // Single Instance to avoid iterating queue
@@ -318,7 +293,7 @@ fn process_inputs_system(
             if keys.pressed(KeyCode::KeyE) {
                 delta.y += cam.speed;
             }
-
+///*
             // Manual Zoom 1. -> 0.1 -> 0.01 -> 0.001 -> ..
             if keys.pressed(KeyCode::Space) { // Zoom In
                 let mut i = 1;
@@ -354,6 +329,14 @@ fn process_inputs_system(
                     cam.fov += 0.1_f32.powf(i as f32);
                 }
             }
+ //*/
+            // if keys.pressed(KeyCode::Space) { // Zoom Out
+            //     cam.fov /= 1.25;
+            // }
+            // if keys.pressed(KeyCode::AltLeft) { // Zoom Out
+
+            //     cam.fov *= 1.25;
+            // }
 
             // Adjust Speed
             if keys.pressed(KeyCode::ShiftLeft) {
@@ -392,7 +375,6 @@ fn process_inputs_system(
             // }.into()
         }
     }
-
 
     // Update_Scale 
     if keys.pressed(KeyCode::Digit1) {
@@ -434,7 +416,6 @@ fn process_inputs_system(
             }
         }
 
-
     // Reset to pos
     if keys.just_released(KeyCode::Tab) {
             let mut cam_transform = q_transform.single_mut();
@@ -446,11 +427,37 @@ fn process_inputs_system(
             info!("Reset performed. Cameratransform: {:?}", cam_transform);       
     }
 
-    
+    // Enter Tree Generation
+    if keys.just_released(KeyCode::Enter){//input_path.is_empty() {
+        if *char_input_flag == 0. {
+            spawn_tree("/home".to_string(), Vec3 { x: 0., y: 0., z: 0. }, (1.,0.7,0.5,3.), &mut commands, &mut meshes,&mut materials);
+            *char_input_flag = 1.;
+        }
+        else {
+            *char_input_flag += 1.;
+            info!("Path: {:?}", input_path.clone());
+            // spawn_tree(input_path.clone().to_string(), Vec3 { x: *wandering_pos, y: 0., z: 0. }, 
+            // (1.1,1.1,0.1,*wandering_pos/10000.), &mut commands, &mut meshes,&mut materials);
+
+            // spawn_tree(input_path.clone().to_string(), Vec3 { x: 10000. * *char_input_flag, y: 0., z: 0. }, 
+            // (10.,0.5,100.,*char_input_flag), &mut commands, &mut meshes,&mut materials);
+            // *char_input_flag = false;
+            // for j in 1..5 {
+                for i in 1..10 {
+                    spawn_tree(input_path.clone().to_string(), Vec3 { x: 40000. * i as f32, y: 0., z:  0. }, 
+                    (12.,0.7,100.,i as f32 * 0.1), &mut commands, &mut meshes,&mut materials);
+                }
+            // }
+
+        }
+
+        info!("Enterinput");
+    }
+
     // Node_Picking
     let window = q_window.single();
     let (camera, mut camera_transform) = q_camera.single();
-    let mut q_screen_text = q_screen_text_transform.iter_mut();
+    let mut q_screen_text = q_screen_text_transform.iter_mut();//.iter_mut();
 
     if buttons.just_released(MouseButton::Left) {
         // let window = q_window.single();
@@ -505,6 +512,8 @@ fn process_inputs_system(
                                 
                                 info!("TreeBranchName: {:?}",tree_data.branches[i].name);
 
+                                *input_path = tree_data.branches[i].name.clone();
+
                                 let mut cnt = 0.;
                                 for entry in WalkDir::new(tree_data.branches[i].name.clone().to_string()).max_depth(1).into_iter().filter_map(|e| e.ok()) {
                                     println!(": {:?} :", entry.path());
@@ -523,7 +532,6 @@ fn process_inputs_system(
                                 
                                 // Click on node to translate all points around the center point by substracting clicked point from every point?
                                 // To then be able to scale from it 
-
 
                             }
                         }
@@ -559,47 +567,187 @@ fn process_inputs_system(
         }
     }
 
-
-
+    // Update Node texts
     // #TODO:
     // Updates node information in cameraview // Depending on Bounding sphere, needs second check if bounding finds are really in view
     if let Some(tree_data) = &mut tree_data {
         // Places the bounding sphere a bit in front of the camera, bounding box at viewplane may be more usefull
         // let bound_sphere = BoundingSphere::new(camera_transform.forward().mul_add(Vec3 { x: 0., y: 0., z: 6000. }, camera_transform.translation()), 10000.0);
-        let bound_sphere = BoundingSphere::new(camera_transform.transform_point(camera_transform.to_scale_rotation_translation().1.mul_vec3(Vec3 { x: 0., y: 0., z: 6000. })), 10000.0);
+        let bound_sphere = BoundingSphere::new(
+            camera_transform.transform_point(
+                camera_transform.to_scale_rotation_translation().1
+                .mul_vec3(Vec3 { x: 1., y: 1., z: 1. })), 1000.0);
         
+                                // Name, Distance, Screenpos
+        let mut detected_nodes: Vec<(String, i32, Vec3)> = vec![];
+
         // let mut q_screen_text = q_screen_text_transform.iter_mut();
         for (i, branch, ) in tree_data.bounds.clone().into_iter().enumerate(){
             let cast_result = bound_sphere.intersects(&branch);//BoundingSphereCast::from_ray(branch, world_position, 10000.);
             if cast_result == true {
 
-                // println!("#{} CastResult: {:?} Path: {:?} \n BranchInfo: {:?} \n", i, cast_result, tree_data.branches[i].name, tree_data.branches[i]);
+                if let Some(screen_position) = camera.world_to_ndc(camera_transform, tree_data.bounds[i].center){
+                    
+                    let mut distance_vec;
+                    distance_vec = tree_data.bounds[i].center - camera_transform.translation();
 
-                if let Some((mut text,mut text_transform)) = q_screen_text.next(){
-                    if let Some(screen_position) = camera.world_to_ndc(camera_transform, tree_data.bounds[i].center){
+                    // Dot Product calculates the cos(angle) between to vecs
+                    // -1 : Pointing in opposite directions
+                    //  0 : Perpendicular
+                    //  1 : Exactly same direction
+                    let mut dot_product = 0.;
+                    dot_product = distance_vec.normalize().dot(camera_transform.forward());
 
-                        text_transform.translation.x = screen_position.x * window.width() *0.5;// - window.width()/2.;
-                        text_transform.translation.y = screen_position.y * window.height()*0.5;// - window.height()/2.;
-                        text_transform.translation.z = screen_position.z;
+                    // info!("CameraForward: {:?} \nDotProdukt: {:?}", camera_transform.forward(), dot_product);
+                    if dot_product > 0. {
+                        // info!("Dot > 0!");
 
-                        // #TODO:
-                        // Following should be Switchable
+                        let distance = camera_transform.translation().distance(tree_data.bounds[i].center);
+                        let distance_int = distance as i32;
 
-                        // Whole path
-                        // text.sections[0].value = tree_data.branches[i].name.clone();// + " " + &screen_position.x.to_string() + " " + &screen_position.y.to_string();
-                        
-                        // Only Current folder
-                        text.sections[0].value = tree_data.branches[i].name.clone().rsplit_once("/").unwrap().1.to_string();
+                        // info!("Distance: {:?} {:?}", distance, distance_int);
+
+                        let mut final_screen_pos: Vec3 = Vec3::default();
+                        final_screen_pos.x = screen_position.x * window.width() *0.5;// - window.width()/2.;
+                        final_screen_pos.y = screen_position.y * window.height()*0.5;// - window.height()/2.;
+                        final_screen_pos.z = screen_position.z;
+
+                        detected_nodes.push( ( // Last path folder name
+                            tree_data.branches[i].name.clone().rsplit_once("/").unwrap().1.to_string(),
+                            distance_int,
+                            final_screen_pos
+                            )
+                        )
                     }
                 }
+                // println!("#{} CastResult: {:?} Path: {:?} \n BranchInfo: {:?} \n", i, cast_result, tree_data.branches[i].name, tree_data.branches[i]);
+
+                // if let Some((mut text,mut text_transform)) = q_screen_text.next(){
+                //     if let Some(screen_position) = camera.world_to_ndc(camera_transform, tree_data.bounds[i].center){
+
+                //         text_transform.translation.x = screen_position.x * window.width() *0.5;// - window.width()/2.;
+                //         text_transform.translation.y = screen_position.y * window.height()*0.5;// - window.height()/2.;
+                //         text_transform.translation.z = screen_position.z;
+
+                //         // #TODO:
+                //         // Following should be Switchable
+
+                //         // Whole path
+                //         // text.sections[0].value = tree_data.branches[i].name.clone();// + " " + &screen_position.x.to_string() + " " + &screen_position.y.to_string();
+                        
+                //         // Only Current folder
+                //         text.sections[0].value = tree_data.branches[i].name.clone().rsplit_once("/").unwrap().1.to_string();
+                //     }
+                // }
+                // else {
+                //     // q_screen_text;
+                //     // info!("Screen Full!");
+                //     // q_screen_text.nth(0);
+                //     // let mut q_screen_text = q_screen_text_transform.iter_mut();
+                // }
             }
         }
-        while let Some((_text,mut text_transform))  = q_screen_text.next(){
-            text_transform.translation.x = -window.width();
-            text_transform.translation.y = window.height();
-        }               
+
+        if detected_nodes.len() > 0 {
+            detected_nodes.sort_by_key(|k| k.1);
+
+            let mut node_iter = detected_nodes.clone().into_iter();
+
+            let mut cnt = 0;
+            // for node in detected_nodes.clone() {
+            //     if cnt < 200 {
+            //         info!("{:?} Node: {:?} \n{:?} {:?}",cnt, node.0, node.1, node.2 );
+            //     }
+            //     cnt += 1;
+            // }
+            cnt = 0;
+            while let Some((mut text,mut text_transform)) = q_screen_text.next(){
+                if let Some(package) = node_iter.next(){//nth(cnt) {
+                    text.sections[0].value = package.0.clone();
+                    text_transform.translation = package.2;
+                    cnt += 1;
+                //         // #TODO:
+                //         // Following should be Switchable
+
+                //         // Whole path
+                //         // text.sections[0].value = tree_data.branches[i].name.clone();// + " " + &screen_position.x.to_string() + " " + &screen_position.y.to_string();
+                        
+                //         // Only Current folder
+                //         text.s
+                }
+                else {
+                    text_transform.translation.x = -window.width();
+                    text_transform.translation.y = window.height();
+                }
+            }  
+        }
+
+
+        // while let Some((_text,mut text_transform)) = q_screen_text.next(){
+        //     // info!("Screen while!");
+        //     // Just Pushing them out of view
+        //     text_transform.translation.x = -window.width();
+        //     text_transform.translation.y = window.height();
+        // }               
     }
 }
+
+fn spawn_tree (
+    path: String,
+    pos: Vec3,
+    param_set: (f32,f32,f32,f32),
+    commands: &mut Commands,
+    meshes: &mut ResMut<Assets<Mesh>>,
+    materials: &mut ResMut<Assets<StandardMaterial>>,
+
+    // asset_server: Res<AssetServer>,
+    // window: Query<&Window>,
+
+) {
+
+    let mut main_tree = database::Tree::new();
+    main_tree.construct(path); // No end "/" allowed
+    // main_tree.construct("./TestTree/Tree".to_string()); // No end "/" allowed
+    // main_tree.construct("/home/nom/code/rust/storytree".to_string()); // No end "/" allowed
+    // main_tree.construct("/".to_string()); // No end "/" allowed
+    // main_tree.construct("./TestTree/Tree".to_string()); // No end "/" allowed
+    // main_tree.construct("/".to_string()); // No end "/" allowed
+    // main_tree.construct("/sys/devices/pci0000:00".to_string()); // No end "/" allowed
+    // main_tree.construct("/sys/devices/pci0000:00/0000:00:02.0/drm".to_string());
+    let mut tree_name: String = "000".to_string();
+    commands.spawn((PbrBundle {
+        mesh: meshes.add(main_tree.grow(&mut tree_name, param_set)
+    ),
+        material: materials.add(
+            Color::rgba(16., 0., 0., 1.0),
+        ),
+        transform: Transform::from_translation(pos),
+        ..Default::default()
+        },
+        TreeMeshMarker,
+        RenderLayers::layer(0),
+        )
+        );
+
+    // Dodecas
+    commands.spawn((PbrBundle {
+        mesh: meshes.add(main_tree.mesh_nodes()
+    ),
+        material: materials.add(
+            Color::rgba(0.8, 0.4, 0.3, 1.0),
+        ),
+        transform: Transform::from_translation(pos),
+        ..Default::default()
+        },
+        TreeMeshMarker,  // Enable this to also scale nodes
+        RenderLayers::layer(0),
+        )
+        );
+
+        commands.insert_resource(main_tree.clone());
+    }
+
+
 
 // --- // --- // Utils \\ --- \\ --- \\
 
