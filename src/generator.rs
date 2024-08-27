@@ -57,15 +57,18 @@ pub fn walk_path_to_mesh(entry_path: &str, generation_type: GenerationType, dept
     let mut line_strip_vertices: Vec<Vec3> = vec![];
 
     let font_data = include_bytes!("../assets/fonts/Roboto-Regular.ttf");
-    let mut generator = MeshGenerator::new_with_quality(font_data, QualitySettings{quad_interpolation_steps:1,cubic_interpolation_steps:1});
-    let common = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789".to_string();
+    let mut generator = MeshGenerator::new_with_quality(font_data, 
+        QualitySettings{quad_interpolation_steps:1,cubic_interpolation_steps:1});
+    let common = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789/-+?".to_string();
     // Precache both flat and three-dimensional glyphs both for indexed and non-indexed meshes.
-    generator.precache_glyphs(&common, false, None);
-    generator.precache_glyphs(&common, true, None);
+    _ = generator.precache_glyphs(&common, false, None);
+    _ = generator.precache_glyphs(&common, true, None);
     
     let mut transform: Mat4;
     let mut parent_transform: Mat4; 
-    for entry in WalkDir::new(entry_path).max_depth(depth).sort_by(|a,b| a.file_name().cmp(b.file_name())).into_iter().filter_map(|e| e.ok()) {
+
+    for entry in WalkDir::new(entry_path).max_depth(depth).sort_by
+        (|a,b| a.file_name().cmp(b.file_name())).into_iter().filter_map(|e| e.ok()) {
         if entry.file_type().is_dir() {
             cnt += 1.;
             match generation_type {
@@ -84,6 +87,7 @@ pub fn walk_path_to_mesh(entry_path: &str, generation_type: GenerationType, dept
             if dodecaflag == true {
                 extend_space_vec(&mut space_vertices, &mut space_indices, &transform, cnt);
             }
+            extend_line_list_vec(&mut line_list_vertices, &transform, &parent_transform);
 
             // Calculates sets of lines
             // LineList: Branches from (close to start) to far
@@ -164,56 +168,47 @@ fn next_branch_transform(path: &str) -> Mat4 {
 
     let mut transform :Mat4 = Default::default();
 
-    // Split path at / into unique folder names
-    let dirs = path.split("/");
+    // Split path at / into unique folder names -> creating an iterator over every
 
     let mut rotation: Vec3 = Default::default();
     let mut translation: Vec3 = Default::default();
     let mut scale: Vec3 = Default::default();
 
-    // 1.
+    let dirs = path.split("/");
+
     if true {
-        // Iterate over dirs and calculate a transform for each one / word iterater == depth, angle given through string
-        // println!("{:?}", path);
-        for (i, dir) in dirs.enumerate() {
-            
-            if !dir.is_empty(){
-                translation.z = 1.;
-                translation.y += 4.;
+    // Iterate over dirs and calculate a transform for each one / word iterater == depth, angle given through string
+    for (i, dir) in dirs.enumerate() {
+        
+        if !dir.is_empty(){
+            translation.z -= 4.;
+            translation.y += 1.;
 
-                // Prints iteration value and word
-                // println!("{}: {}",i, dir);
-
-                // Enumerates over every char per word and sets the rotation accordingly
-                for (j, c) in dir.chars().enumerate() {
-                    // Prints letter by letter with iteration number and ascii value
-                    // print!("{}={}({})",i, c, c as i32);
-                    translation.z -= 1.;//translation_mod.z;
-
-                    rotation.y = get_angle(rotation.y, c, i, j) * 2.;
-                    translation.y += 1.; // Every letter leads to slightly higher position
-                }
-            }      
-
-            // Scale experimentation
-            scale.x = 1.;// / i as f32;
-            scale.y = 1.;// / i as f32;
-            scale.z = 1.;// / i as f32;
-            let base:f32 = 0.9;
-            if i >= 4{                 
-                let scalf = base.powf(i as f32);//0.9 * i as f32;
-                scale.x = scalf;// / i as f32;
-                scale.y = scalf;// / i as f32;
-                scale.z = scalf;// / i as f32;
+            // Enumerates over every char per word and sets the rotation accordingly
+            for (j, c) in dir.chars().enumerate() {
+                translation.z += 0.4;
+                rotation.y = get_angle(rotation.y, c, i, j) *2.;
+                translation.y += 0.2; // Every letter leads to slightly higher position
             }
-            rotation.x -= 0.035;
+        }      
 
-            // Stack unique word transforms together for full path transform // Normal Way would be L = T * R * S  -> Order is S then R then T, but we use angletravel
-            transform *= Mat4::from_rotation_y(rotation.y) * Mat4::from_rotation_x(rotation.x)  *  Mat4::from_translation(translation) * Mat4::from_scale(scale);
+        // // Scale experimentation
+        scale = Vec3::splat(0.5);
+        let base:f32 = 0.7;
+        if i >= 2{                 
+            let scalf = base.powf(i as f32);
+            scale = Vec3::splat(scalf);
         }
+
+        // Stack unique word transforms together for full path transform // Normal Way would be L = T * R * S  -> Order is S then R then T, but we use angletravel
+        transform *= Mat4::from_rotation_y(rotation.y) * Mat4::from_rotation_x(rotation.x)  *  Mat4::from_translation(translation) * Mat4::from_scale(scale);
     }
-    // 2. Treetrunk
-    else if false{ // more space for experimentation
+    
+
+}
+
+    // 2. Treetrunk // for / this puts out a bit of split, for experimentation
+     else if false{ // more space for experimentation
         // Todo: Get them branches to spread out wide first, then decrease their spread so they stay over their local parent folders
         // > z high, then exponentially lower should do the trick? Rotation might need fixing. 
         let cnt_dirs = dirs.clone().count();
@@ -352,7 +347,7 @@ fn get_angle(mut current_angle: f32, c: char, word_num: usize, char_num: usize) 
         '7'       => map_pos =  15,
         '8'       => map_pos =  16,
         '9'       => map_pos =  17,
-        _         => map_pos = 40 - c as i32,
+        _         => map_pos =  40 - c as i32,
     } 
 
     if word_num <= 1{
@@ -371,7 +366,7 @@ fn get_angle(mut current_angle: f32, c: char, word_num: usize, char_num: usize) 
         current_angle
     }
     else {
-        current_angle = (map_pos as f32 * min_angle) * 0.05; /// (10. * (word_num + char_num) as f32);
+        current_angle = (map_pos as f32 * min_angle) * 0.5f32.powf(word_num as f32); /// (10. * (word_num + char_num) as f32);
         current_angle
     }      
 
@@ -381,7 +376,7 @@ fn get_angle(mut current_angle: f32, c: char, word_num: usize, char_num: usize) 
 fn extend_text_vec(vertices: &mut Vec<f32>, generator: &mut MeshGenerator<Face>, transform: &Mat4, entry: &DirEntry) {
 
     // Adjust position, relative to dodeca, adjust scale
-    let transform = transform.clone() * Mat4::from_translation(Vec3 { x: 0.0, y: 0., z: 0. }) * Mat4::from_scale(Vec3::splat(0.5));
+    let transform = transform.clone() * Mat4::from_translation(Vec3 { x: 0.1, y: 0.1, z: 0. }) * Mat4::from_scale(Vec3::splat(0.5));
 
     let text_mesh: MeshText = generator
         .generate_section(entry.path().to_str().unwrap(), true, Some(&transform.to_cols_array()))
@@ -390,7 +385,7 @@ fn extend_text_vec(vertices: &mut Vec<f32>, generator: &mut MeshGenerator<Face>,
     vertices.extend(text_mesh.vertices);
 }
 
-// Creates the dodecas
+// Creates the dodecaeder
 pub fn extend_space_vec(space_vertices: &mut Vec<[f32; 3]>, space_indices: &mut Vec<u32>, transform: &Mat4, cnt: f32){
     let PHI: f32 = 1.618033989; 
     let ground_vertices: [[f32; 3]; 20] =   
@@ -411,7 +406,7 @@ pub fn extend_space_vec(space_vertices: &mut Vec<[f32; 3]>, space_indices: &mut 
 
         // Gespiegelt an der XZ Ebene, -> Werte von 0 - 7 mit positiver y achse
 
-        [  -1.,      1.,      1.  ], // 12
+        [  -1.,      1.,      1.   ], // 12
         [  0.,       1./PHI,  PHI  ], // 13
         [  1.,       1.,      1.   ], // 14
         [  1.,       1.,      -1.  ], // 15
@@ -421,10 +416,10 @@ pub fn extend_space_vec(space_vertices: &mut Vec<[f32; 3]>, space_indices: &mut 
         [  1./PHI,   PHI,     0.   ]  // 19 
         ];
 
-    // multiply indizes
+    // Multiply indizes
     let add_indi = 20 * (cnt as u32);
     space_indices.extend(vec![  
-                
+
         0+add_indi, 1  +add_indi, 2 +add_indi ,
         0+add_indi, 2  +add_indi, 3 +add_indi ,
         0+add_indi, 3  +add_indi, 4 +add_indi ,
@@ -475,6 +470,26 @@ pub fn extend_space_vec(space_vertices: &mut Vec<[f32; 3]>, space_indices: &mut 
 
     ]); 
 
+
+    // // Multiply indizes
+    // let add_indi = 20 * (cnt as u32);
+    // space_indices.extend(vec![  
+
+    //      0+add_indi,  1+add_indi,  2+add_indi,  0+add_indi,  2+add_indi,  3+add_indi,  0+add_indi,  3+add_indi,  4+add_indi,
+    //      6+add_indi,  5+add_indi,  3+add_indi,  6+add_indi,  3+add_indi,  2+add_indi,  6+add_indi,  2+add_indi,  7+add_indi, 
+    //      2+add_indi,  1+add_indi,  9+add_indi,  2+add_indi,  9+add_indi,  8+add_indi,  2+add_indi,  8+add_indi,  7+add_indi,
+    //      3+add_indi,  5+add_indi, 11+add_indi,  3+add_indi, 11+add_indi, 10+add_indi,  3+add_indi, 10+add_indi,  4+add_indi,
+    //      5+add_indi,  6+add_indi, 13+add_indi,  5+add_indi, 13+add_indi, 12+add_indi,  5+add_indi, 12+add_indi, 11+add_indi, 
+    //      1+add_indi,  0+add_indi, 16+add_indi,  1+add_indi, 16+add_indi, 15+add_indi,  1+add_indi, 15+add_indi,  9+add_indi, 
+    //      7+add_indi,  8+add_indi, 14+add_indi,  7+add_indi, 14+add_indi, 13+add_indi,  7+add_indi, 13+add_indi,  6+add_indi, 
+    //      4+add_indi, 10+add_indi, 17+add_indi,  4+add_indi, 17+add_indi, 16+add_indi,  4+add_indi, 16+add_indi,  0+add_indi, 
+    //     13+add_indi, 14+add_indi, 19+add_indi, 13+add_indi, 19+add_indi, 18+add_indi, 13+add_indi, 18+add_indi, 12+add_indi, 
+    //     16+add_indi, 17+add_indi, 18+add_indi, 16+add_indi, 18+add_indi, 19+add_indi, 16+add_indi, 19+add_indi, 15+add_indi, 
+    //     18+add_indi, 17+add_indi, 10+add_indi, 18+add_indi, 10+add_indi, 11+add_indi, 18+add_indi, 11+add_indi, 12+add_indi, 
+    //     19+add_indi, 14+add_indi, 8 +add_indi, 19+add_indi, 8 +add_indi,  9+add_indi, 19+add_indi,  9+add_indi, 15+add_indi, 
+
+    // ]); 
+
         // Convert the transformation matrix to Mat4
         // let transform_matrix = Mat4::from_cols_array(&transform);
 
@@ -497,19 +512,16 @@ pub fn extend_space_vec(space_vertices: &mut Vec<[f32; 3]>, space_indices: &mut 
 }
 
 fn extend_line_list_vec(line_vertices: &mut Vec<Vec3>, transform: &Mat4, parent_transform: &Mat4) {
-   
+
     if line_vertices.is_empty() {
         // First Point, Origin (0,0,0)
         line_vertices.push(Vec3::default());
-
         // Second Point, from path
         line_vertices.push(transform.transform_point3(Vec3::default()));
     }
     else {
-        // Frist Point, fresh calculated from string that was delivered minus the last word, "finding parent"
+        // Frist Point, fresh calculated from string that was delivered minus the last word -> "finding parent"
         line_vertices.push(parent_transform.transform_point3(Vec3::default()));
-        // println!("<><><><><><><>><><><><><>");
-
         // Second Point, out of given transform
         line_vertices.push(transform.transform_point3(Vec3::default()))
     }

@@ -179,20 +179,22 @@ impl Tree {
         // info!("Root Children1:{:?}",self.branches[0].children);
 
         // dive to count all the subfolders
-        // info!("All Subfolders: {:?}",dive_to_count(0, &mut self.branches)); 
-
-        // for i in 0..10 {
-        //     info!("i: {:?} Children: {:?}",i ,self.branches[i].children);
-        //     info!("i: {:?} Parent: {:?}",i ,self.branches[i].parent);
-        //     info!("i: {:?} NumOfChildren: {:?}",i ,self.branches[i].num_of_all_children);
-        // }
+        info!("All Subfolders: {:?}",dive_to_count(0, &mut self.branches)); 
 
         // dive to sort
         dive_to_sort(0,&mut self.branches);
 
         // dive to construct
-//        dive(name,0, &mut self.branches, &mut line_vertices);
+        // dive(name,0, &mut self.branches, &mut line_vertices);
         param_dive(name,0, &mut self.branches, &mut line_vertices,  param_set);
+
+//         for i in 0..5 {
+//             info!("i: {:?} Children: {:?}",i ,self.branches[i].children);
+//             info!("i: {:?} Parent: {:?}",i ,self.branches[i].parent);
+//             info!("i: {:?} NumOfChildren: {:?}",i ,self.branches[i].num_of_children);
+//             info!("i: {:?} NumOfAllChildren: {:?} : {:?}",i ,self.branches[i].num_of_all_children, self.branches[i].transform);
+//             info!("Transform0: {:?}",self.branches[i].transform);
+//         }
 
         // info!("Number of branches: {}", self.branches.len());
 
@@ -245,7 +247,7 @@ fn dive_to_count(index: usize, branches: &mut Vec<Branch>) -> i32 {
         }
         return branches[index].num_of_all_children +1;
     }
-    // error!("branches.len() > index: {:?} ... {:?}",branches.len(),index);
+    error!("branches.len() > index: {:?} ... {:?}",branches.len(),index);
     return 0;
 }
 
@@ -258,18 +260,26 @@ fn dive_to_sort(index: usize, branches: &mut Vec<Branch>) {
         for i in 0..branches[index].children.len() {
             if branches[index].children[i] < branches.len() {
 
+                if index < 3 {
+                    // info!("--- Index: {:?} : {:?}", index, branches[branches[index].children[i]].num_of_all_children)
+                }
                 sort_vec.push((branches[index].children[i], branches[branches[index].children[i]].num_of_all_children)); // Child indizes der Reihe nach
             }
+            else {
+                error!("Descendantindex out of bounds!");
+            }
         }
-
+        // if index < 2 {
+        //     info!("SortVec: {:?} \n", sort_vec);
+        // }
         if sort_vec.len() > 0 {
-            // info!("1SortVec: {:?}",sort_vec);
+            // info!("1 SortVec: {:?}",sort_vec);
             sort_vec.sort_by_key(|k| k.1);
             // Standart is highest value on last position
             // sort_vec.reverse();
 
             for i in 0..sort_vec.len() {
-                    branches[index].children[i] = sort_vec[i].0;
+                branches[index].children[i] = sort_vec[i].0;
             }
         }
         for child_index in branches[index].children.clone() {
@@ -286,11 +296,11 @@ fn dive_to_sort(index: usize, branches: &mut Vec<Branch>) {
             
             let mut pos: Vec3 = Vec3::splat(0.);
             let mut last_pos: Vec3 = Vec3::splat(0.);
-            let mut extending_factor = 40;//20;//branches[index].children;//20;
+            let mut extending_factor = 40;//0 - branches[index].depth as i32 * 10; //40;//20;//branches[index].children;//20;
             let children = branches[index].children.clone();
             let mut inner_child_index: usize = 0;
     
-            let mut transform = branches[index].transform;
+            let transform = branches[index].transform;
             pos = transform.translation;//transform.transform_point(Vec3::splat(0.)); 
             last_pos = pos;
     
@@ -299,11 +309,11 @@ fn dive_to_sort(index: usize, branches: &mut Vec<Branch>) {
     
             let mut spiral_transform = Transform::default();
     
-            
             let mut scale = param_set.0 * param_set.1.powf(branches[index].depth as f32);
             
-            if branches[index].depth == 0 {
-                scale = param_set.0 * param_set.1 * branches[index].depth as f32;
+            if index == 0 {
+                branches[index].transform.scale = Vec3::splat(scale);
+                extending_factor = 1000;
             }
 
             let vertex_iteration = (branches[index].children.len() as i32 * extending_factor) - 0;
@@ -319,12 +329,15 @@ fn dive_to_sort(index: usize, branches: &mut Vec<Branch>) {
                 // spiral_transform.translation.y = scale * param_set.2 * i as f32 *  0.3;//param_set.0 + scale* 1.;
                 // spiral_transform.translation.z = scale * (param_set.2 * (i as f32 * PI/16. * param_set.3).sin() + param_set.0 * i as f32);// + scale* 10.*(1.-1.*E.powf(-0.0001*i as f32)) * 1.*(1./64.*i as f32 * PI/16.).sin();
 
-                spiral_transform.translation.x =scale* (0.001*i as f32 * (i as f32 * PI/16.).cos() + scale* 10.*(1.-1.*E.powf(-0.0001*i as f32)) * 1.*(1./64.*i as f32 * PI/16.).cos());
-                spiral_transform.translation.y =scale* 1.;//0.5;//0.2;
-                spiral_transform.translation.z =scale* (0.001*i as f32 * (i as f32 * PI/16.).sin() + scale* 10.*(1.-1.*E.powf(-0.0001*i as f32)) * 1.*(1./64.*i as f32 * PI/16.).sin());
+                spiral_transform.translation.x =scale* ( 0.001*i as f32 * (i as f32 * PI/16. + param_set.3).cos() + scale* 10.*(1.-1.*E.powf(-0.0001*i as f32)) * 1.*(1./64.*i as f32 * PI/16.).cos());
+                spiral_transform.translation.y =0.01 + branches[index].depth as f32 * 0.1 * scale;//(branches[index].depth as f32 *0.01);// + 0.1 * i as f32) * scale;//param_set.3*scale* 1.;//0.5;//0.2;
+                spiral_transform.translation.z =scale* ( 0.001*i as f32 * (i as f32 * PI/16.).sin() + scale* 10.*(1.-1.*E.powf(-0.0001*i as f32)) * 1.*(1./64.*i as f32 * PI/16.).sin());
            
-
-
+                // Spiral Backup
+                // spiral_transform.translation.x =scale* ( 0.001*i as f32 * (i as f32 * PI/16.).cos() + scale* 10.*(1.-1.*E.powf(-0.0001*i as f32)) * 1.*(1./64.*i as f32 * PI/16.).cos());
+                // spiral_transform.translation.y =scale * 1.;//param_set.3*scale* 1.;//0.5;//0.2;
+                // spiral_transform.translation.z =scale* ( 0.001*i as f32 * (i as f32 * PI/16.).sin() + scale* 10.*(1.-1.*E.powf(-0.0001*i as f32)) * 1.*(1./64.*i as f32 * PI/16.).sin());
+           
                 // Spiraling Up
                 spiral_pos = spiral_transform.transform_point(spiral_pos);
                 // Rotate into formerly given direction
@@ -347,7 +360,9 @@ fn dive_to_sort(index: usize, branches: &mut Vec<Branch>) {
                         }
                         else {
                             // rts.look_to(  pos.normalize().any_orthogonal_vector(), pos.normalize());// * Vec3 {x: 1., y: 0., z: 1. });
-                            rts.look_to(  pos.normalize(), Vec3 {x: 0., y: 1., z: 0. });// * Vec3 {x: 1., y: 0., z: 1. });
+                            // rts.look_to(  dir.normalize(), Vec3 {x: 0., y: 1., z: 0. } + pos.normalize());// * Vec3 {x: 1., y: 0., z: 1. });
+                            // rts.look_to(  dir.normalize().any_orthonormal_vector(), dir.normalize() + Vec3 {x: 0., y: 1., z: 0. } );// Vec3 {x: 0., y: 1., z: 0. });// * Vec3 {x: 1., y: 0., z: 1. });
+                            rts.look_to(  dir.normalize(), Vec3 {x: 0., y: 1., z: 0. } );// * Vec3 {x: 1., y: 0., z: 1. });
 
                             rts = rts.with_translation(pos);
                             rts = rts.with_scale(Vec3::splat(scale));
@@ -361,8 +376,8 @@ fn dive_to_sort(index: usize, branches: &mut Vec<Branch>) {
                     last_pos = pos;
             }
 
-            param_set.0 -= 0.1;
-            param_set.2 += 0.1;
+            // param_set.0 -= 0.1;
+            // param_set.2 += 0.1;
 
             for child_index in branches[index].children.clone() {
                 if !(branches.len() < child_index) {

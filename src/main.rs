@@ -14,14 +14,16 @@ use bevy::{
     input::{keyboard::KeyCode, mouse::{MouseButtonInput, MouseMotion, MouseWheel}},
     math::{bounding::{BoundingSphere, BoundingSphereCast, BoundingVolume, IntersectsVolume, RayCast3d}, primitives::Sphere, *}, pbr::{extract_meshes, wireframe::WireframeConfig, CascadeShadowConfigBuilder}, 
     prelude::*,
-    render::{camera::ScalingMode, mesh::{self, Indices, PrimitiveTopology}, render_resource::{AsBindGroup, ShaderRef}, view::{RenderLayers, VisibleEntities}}, transform, utils::info
+    render::{camera::ScalingMode, mesh::{self, Indices, PrimitiveTopology}, render_resource::{AsBindGroup, ShaderRef}, view::{RenderLayers, VisibleEntities}}, transform::{self, commands}, utils::{info, HashSet}
 };
-
+use generator::GenerationType;
+use std::collections::HashMap;
 
 use std::str;
 use walkdir::{WalkDir, DirEntry};
 
 use std::process::Command;
+
 
 mod generator;
 mod database;
@@ -33,8 +35,8 @@ struct Cam
     pitch: f32,
     fov:   f32,
     speed: f32,
-    pos: Vec3,
-    rot: Quat,
+    pos:   Vec3,
+    rot:   Quat,
 }
 
 #[derive(Component)]
@@ -51,18 +53,18 @@ fn main() {
 
     App::new()
         .add_plugins(DefaultPlugins)
-        .insert_resource(ClearColor(Color::rgb(0.1, 0.01, 0.04))) // Background 2 Darkblu
+        .insert_resource(ClearColor(Color::rgb(1.0, 1., 1.0))) // Background 2 Darkblu
         .add_systems(Startup, setup)
         .add_systems(Update, (bevy::window::close_on_esc, process_inputs_system, animate_light_direction))
-        .insert_resource(AmbientLight {
-            color: Color::Rgba {
-                red: 0.95,
-                green: 0.3,
-                blue: 1.0,
-                alpha:1.0,
-            },
-            brightness: 0.5,},
-        )
+        // .insert_resource(AmbientLight {
+        //     color: Color::Rgba {
+        //         red: 0.95,
+        //         green: 0.3,
+        //         blue: 1.0,
+        //         alpha:1.0,
+        //     },
+        //     brightness: 0.5,},
+        // )
 
         .run();
 }
@@ -80,13 +82,13 @@ fn setup(
     // spawn_tree("/home".to_string(), &mut commands, &mut meshes,&mut materials);
 
     // Plane
-    commands.spawn(PbrBundle {
-        mesh: meshes.add(Circle::new(5000000.)),
-        material: materials.add(Color::rgb(1., 1., 1.)),
-        // material: materials.add(Color::rgb(0.4, 0.3, 0.4)),
-        transform: Transform::from_rotation(Quat::from_rotation_x(-PI/2.)),
-        ..default()
-    });
+    // commands.spawn(PbrBundle {
+    //     mesh: meshes.add(Circle::new(5000000.)),
+    //     material: materials.add(Color::rgb(1., 1., 1.)),
+    //     // material: materials.add(Color::rgb(0.4, 0.3, 0.4)),
+    //     transform: Transform::from_rotation(Quat::from_rotation_x(-PI/2.)),
+    //     ..default()
+    // });
 
     // Ui Bundle v , Probably needs Text2dBundle for precise positioning
     let font = asset_server.load("fonts/Roboto-Bold.ttf");
@@ -94,7 +96,7 @@ fn setup(
         font: font.clone(),
         font_size: 18.0,
         // color: //Color::Rgba { red: 0., green: 0., blue: 0., alpha: 1. },
-        color: Color::GOLD,
+        color: Color::BLACK,
         ..default()
     };
     let text_justification = JustifyText::Center;
@@ -111,7 +113,7 @@ fn setup(
                     text: Text::from_section(i.to_string(), text_style.clone())
                         .with_justify(text_justification),
                     // transform: Transform::from_translation(Vec3 { x: -500. + j as f32 * 30. , y: -200. + i as f32 * 10., z: i as f32 }),
-                    transform: Transform::default(),//from_translation(Vec3::splat(2220.)),
+                    transform: Transform::from_translation(Vec3::splat(1000.)),
                     text_anchor: bevy::sprite::Anchor::CenterLeft,
                     ..default()
                 },
@@ -189,27 +191,28 @@ fn setup(
     // RenderLayers::all(),)
     ));
 
-
-
-
     let x = 1.0;
     let y = 1.0;
     let z = 2.0;
     let w = 1.0;
 
     // Working classic cam
+
     commands.spawn((Camera3dBundle {
-        transform: Transform::from_xyz(0., 10., 40.0).looking_at(Vec3::ZERO, Vec3::Y),
+        transform: Transform::from_xyz(0., 11., 47.).looking_at(Vec3::ZERO, Vec3::Y),
         projection: PerspectiveProjection {
-            // fov: (90.0 / 360.0) * (std::f32::consts::PI * 2.0),
-            // aspect_ratio: 1.0,
             ..default()
         }.into(),
         ..default()
     },
-        Cam {yaw: 0., pitch: 0., fov: 1.0, speed:0.4, pos: Vec3::ZERO, rot: Quat::from_xyzw(0.0, 0.0, 0.0, 1.0)},
-        // RenderLayers::all(),
+        Cam {yaw: 0., pitch: 0., fov: 1., speed:0.47, pos: Vec3::ZERO, rot: Quat::from_xyzw(0.0, 0.0, 0.0, 1.0)},
     ));
+
+    // projection: PerspectiveProjection {
+    //     // fov: (90.0 / 360.0) * (std::f32::consts::PI * 2.0),
+    //     // aspect_ratio: 1.0,
+    //     ..default()
+    // }.into(),
 
     // new 3D orthographic camera
     // commands.spawn((Camera3dBundle {
@@ -252,7 +255,7 @@ fn process_inputs_system(
 
     // mut wandering_pos: Local<f32>,
     mut input_path: Local<String>,
-    mut char_input_flag: Local<f32>
+    mut enter_cnt: Local<f32>
 ) {
 
     // Single Instance to avoid iterating queue
@@ -261,7 +264,7 @@ fn process_inputs_system(
     // Update Cam Yaw & Pitch  // adjust for very small fovs
     for event in mouse_motion_events.read() {
             cam.yaw   += -event.delta.x * cam.fov; 
-            cam.pitch += -event.delta.y * cam.fov;     
+            cam.pitch += -event.delta.y * cam.fov; 
     }
 
     // Update transform from keyboardinput and Yaw&Pitch
@@ -309,7 +312,7 @@ fn process_inputs_system(
                 if cam.fov < 1. {
                     while (1. - cam.fov * 10.0_f32.powf(i as f32)) >= 0. {
                         i += 1;
-                        println!("{:?} :: {:?}",cam.fov,  i);
+                        // println!("{:?} :: {:?}",cam.fov,  i);
                     }
                     cam.fov += 0.1_f32.powf(i as f32);
                 }   
@@ -317,7 +320,7 @@ fn process_inputs_system(
                     i = 1;
                     while (1. - cam.fov / 10.0_f32.powf(i as f32)) <= 0. {
                         i += 1;
-                        println!("{:?} :: {:?}",cam.fov,  i);
+                        // println!("{:?} :: {:?}",cam.fov,  i);
                     }
                     cam.fov += 0.1_f32.powf(i as f32);
                 }    
@@ -400,6 +403,7 @@ fn process_inputs_system(
     if keys.pressed(KeyCode::Digit2) {
         for (mut transform, cube) in &mut tree {
             transform.scale *= Vec3{x: 1.1,y:1.1,z: 1.1};
+
             // transform.translation.y -= 2. * transform.scale.y;
         }
     }
@@ -429,30 +433,37 @@ fn process_inputs_system(
 
     // Enter Tree Generation
     if keys.just_released(KeyCode::Enter){//input_path.is_empty() {
-        if *char_input_flag == 0. {
-            spawn_tree("/home".to_string(), Vec3 { x: 0., y: 0., z: 0. }, (1.,0.7,0.5,3.), &mut commands, &mut meshes,&mut materials);
-            *char_input_flag = 1.;
+        if *enter_cnt == 1. {
+            spawn_tree("/sys".to_string(), Vec3 { x: 0., y: 0., z: 0. }, (1.,0.9,0.5,1.1), &mut commands, &mut meshes,&mut materials);
+            *enter_cnt = 1.;
+        }
+        else if *enter_cnt == 0. {
+            spawn_generator_tree("/sys".to_string(), Vec3 { x: 0., y: 0., z: 0. }, &mut commands, &mut meshes,&mut materials, true, true);
         }
         else {
-            *char_input_flag += 1.;
+            *enter_cnt += 1.;
             info!("Path: {:?}", input_path.clone());
-            // spawn_tree(input_path.clone().to_string(), Vec3 { x: *wandering_pos, y: 0., z: 0. }, 
-            // (1.1,1.1,0.1,*wandering_pos/10000.), &mut commands, &mut meshes,&mut materials);
-
-            // spawn_tree(input_path.clone().to_string(), Vec3 { x: 10000. * *char_input_flag, y: 0., z: 0. }, 
-            // (10.,0.5,100.,*char_input_flag), &mut commands, &mut meshes,&mut materials);
-            // *char_input_flag = false;
-            // for j in 1..5 {
-                for i in 1..10 {
-                    spawn_tree(input_path.clone().to_string(), Vec3 { x: 40000. * i as f32, y: 0., z:  0. }, 
-                    (12.,0.7,100.,i as f32 * 0.1), &mut commands, &mut meshes,&mut materials);
+                for i in -15..15 {
+                    spawn_tree(input_path.clone().to_string(), Vec3 { x: 10000. * *enter_cnt, y: 0., z:  50000. * i as f32 }, 
+                    (1.,0.9,*enter_cnt,i as f32 * 0.5), &mut commands, &mut meshes,&mut materials);
                 }
-            // }
-
         }
-
-        info!("Enterinput");
     }
+
+    if keys.just_released(KeyCode::Backspace){
+        
+        let center = calc_variance(&tree_data.as_ref().unwrap().bounds);
+        let scale = 1.;
+        info!("Fractal Boxcout: {:?} Scale: {:?}",calc_fractal_dimension(&tree_data.as_ref().unwrap().bounds, scale), scale);
+
+        commands.spawn(PbrBundle {
+            mesh: meshes.add(Sphere::new(100.)),
+            material: materials.add(Color::rgb(0., 1., 0.)),
+            transform: Transform::from_xyz(center.x, center.y, center.z),//Transform::from_rotation(Quat::from_rotation_x(-PI/2.)),
+            ..default()
+        });
+    }
+
 
     // Node_Picking
     let window = q_window.single();
@@ -620,6 +631,7 @@ fn process_inputs_system(
                         )
                     }
                 }
+
                 // println!("#{} CastResult: {:?} Path: {:?} \n BranchInfo: {:?} \n", i, cast_result, tree_data.branches[i].name, tree_data.branches[i]);
 
                 // if let Some((mut text,mut text_transform)) = q_screen_text.next(){
@@ -719,7 +731,7 @@ fn spawn_tree (
         mesh: meshes.add(main_tree.grow(&mut tree_name, param_set)
     ),
         material: materials.add(
-            Color::rgba(16., 0., 0., 1.0),
+            Color::rgba(1., 0., 0., 1.0),
         ),
         transform: Transform::from_translation(pos),
         ..Default::default()
@@ -747,9 +759,109 @@ fn spawn_tree (
         commands.insert_resource(main_tree.clone());
     }
 
+    fn spawn_generator_tree (    
+            path: String,
+            pos: Vec3,
+            commands: &mut Commands,
+            meshes: &mut ResMut<Assets<Mesh>>,
+            materials: &mut ResMut<Assets<StandardMaterial>>,
+            textflag: bool,
+            dodecaflag: bool) {
 
+        let (mut text_mesh,mut space_mesh,mut line_mesh);
+        // let path = "/sys";
+        (text_mesh, space_mesh, line_mesh) = generator::walk_path_to_mesh(path.as_ref(), GenerationType::Branch, 30, textflag, dodecaflag);
+
+        commands.spawn((PbrBundle {
+            mesh: meshes.add(line_mesh),
+            material: materials.add(
+                Color::rgba(0.5, 0.2, 0.1, 1.0),
+            ),
+            transform: Transform::from_translation(pos),
+            ..Default::default()
+            },
+            TreeMeshMarker,  // Enable this to also scale nodes
+            RenderLayers::layer(0),
+            )
+            );
+
+        commands.spawn((PbrBundle {
+            mesh: meshes.add(space_mesh),
+            material: materials.add(
+                Color::rgba(0.8, 0.4, 0.3, 1.0),
+            ),
+            // transform: Transform::from_translationpos),
+            ..Default::default()
+            },
+            TreeMeshMarker,  // Enable this to also scale nodes
+            RenderLayers::layer(0),
+            )
+            );
+
+        commands.spawn((PbrBundle {
+            mesh: meshes.add(text_mesh),
+            material: materials.add(
+                Color::rgba(0.8, 0.4, 0.3, 1.0),
+            ),
+            // transform: Transform::from_translationpos),
+            ..Default::default()
+            },
+            TreeMeshMarker,  // Enable this to also scale nodes
+            RenderLayers::layer(0),
+            )
+            );
+    }
 
 // --- // --- // Utils \\ --- \\ --- \\
+
+fn calc_variance(bounds:& Vec<BoundingSphere>) -> Vec3 {
+    let mut cnt = 0;
+    let mut focal_point = Vec3::default();
+    for sphere in bounds {
+        focal_point += sphere.center;
+        // info!("{:?} Spehre: {:?} ",cnt, sphere.center);
+        cnt += 1;
+    }
+    let div: f32 = cnt as f32;
+    focal_point.x = focal_point.x / div;
+    focal_point.y = focal_point.y / div;
+    focal_point.z = focal_point.z / div;
+
+    let mut variance = Vec3::default();
+    for sphere in bounds {
+
+        variance.x += (sphere.center.x - focal_point.x).powf(2.);
+        variance.y += (sphere.center.y - focal_point.y).powf(2.);
+        variance.z += (sphere.center.z - focal_point.z).powf(2.);
+    }
+
+    variance.x = variance.x / div;
+    variance.y = variance.y / div;
+    variance.z = variance.z / div;
+
+    variance.x = variance.x.sqrt();
+    variance.y = variance.y.sqrt();
+    variance.z = variance.z.sqrt();
+
+    info!("Variance: {:?} FocalPoint: {:?}", variance, focal_point);
+    variance
+}
+
+fn calc_fractal_dimension(spheres: & Vec<BoundingSphere>, box_size: f64) -> usize {
+    let mut unique_boxes: HashSet<(i64, i64, i64)> = HashSet::new();
+    for sphere in spheres {
+        unique_boxes.insert(to_box(sphere.center,box_size));
+    }
+    unique_boxes.len()
+}
+
+fn to_box(pos: Vec3, box_size: f64) -> (i64, i64, i64) {
+    (
+        (pos.x as f64 / box_size).floor() as i64,
+        (pos.y as f64 / box_size).floor() as i64,
+        (pos.z as f64 / box_size).floor() as i64,
+    )
+}
 
 fn count_entities(all_entities: Query<()>) {
     dbg!(all_entities.iter().count());
