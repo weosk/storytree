@@ -1,31 +1,16 @@
 
-use std::collections::btree_map::Iter;
-use std::f32::consts::{E, PI};
 use std::usize;
+use std::f32::consts::{E, PI};
+use std::collections::HashMap;
 
-use bevy::reflect::Map;
 use bevy::render::mesh::{self, PrimitiveTopology};
 use bevy::math::*;      // Affine3A
 use bevy::math::bounding::*;
 use bevy::prelude::*;   
 use bevy::render::render_asset::RenderAssetUsages;
-use bevy::text::YAxisOrientation;
-use bevy::utils::{info, RandomState};
-use walkdir::{WalkDir, DirEntry};
-
-use std::collections::HashMap;
+use walkdir::WalkDir;
 
 use crate::generator;
-
-// #[derive(Component, Debug)]
-// struct Database {
-//     forrest: vec<Tree>,
-// }
-
-// impl Database {
-//     pub fn new(path: String){
-
-// }
 
 #[derive(Component, Debug, Clone)]
 pub struct Branch {
@@ -171,7 +156,7 @@ impl Tree {
     }
 
     // Wrapper method for the recursive dive to provide the mesh
-    pub fn grow(&mut self, name: &mut str, mut param_set: (f32,f32,f32,f32)) -> Mesh {
+    pub fn grow(&mut self, name: &mut str, param_set: (f32,f32,f32,f32)) -> Mesh {
 
         let mut line_mesh : Mesh = Mesh::new(PrimitiveTopology::LineList, RenderAssetUsages::default());
         let mut line_vertices: Vec<Vec3> = vec![];
@@ -187,6 +172,7 @@ impl Tree {
         // dive to construct
         // dive(name,0, &mut self.branches, &mut line_vertices);
         param_dive(name,0, &mut self.branches, &mut line_vertices,  param_set);
+
 
 //         for i in 0..5 {
 //             info!("i: {:?} Children: {:?}",i ,self.branches[i].children);
@@ -291,25 +277,23 @@ fn dive_to_sort(index: usize, branches: &mut Vec<Branch>) {
 }
 
 
-    fn param_dive(name:&mut str, index: usize, branches: &mut Vec<Branch>, line_vertices: &mut Vec<Vec3>,mut param_set: (f32,f32,f32,f32)) -> () {
+    fn param_dive(name:&mut str, index: usize, branches: &mut Vec<Branch>, line_vertices: &mut Vec<Vec3>,param_set: (f32,f32,f32,f32)) -> () {
         if branches.len() > index {
             
-            let mut pos: Vec3 = Vec3::splat(0.);
-            let mut last_pos: Vec3 = Vec3::splat(0.);
             let mut extending_factor = 40;//0 - branches[index].depth as i32 * 10; //40;//20;//branches[index].children;//20;
             let children = branches[index].children.clone();
             let mut inner_child_index: usize = 0;
     
             let transform = branches[index].transform;
-            pos = transform.translation;//transform.transform_point(Vec3::splat(0.)); 
-            last_pos = pos;
+            let mut pos = transform.translation;
+            let mut last_pos = pos;
     
             let mut spiral_pos = Vec3::splat(0.);
             // let mut spiral_pos = vec3(2000., 0., 0.);
     
             let mut spiral_transform = Transform::default();
     
-            let mut scale = param_set.0 * param_set.1.powf(branches[index].depth as f32);
+            let scale = param_set.0 * param_set.1.powf(branches[index].depth as f32);
             
             if index == 0 {
                 branches[index].transform.scale = Vec3::splat(scale);
@@ -318,7 +302,7 @@ fn dive_to_sort(index: usize, branches: &mut Vec<Branch>) {
 
             let vertex_iteration = (branches[index].children.len() as i32 * extending_factor) - 0;
 
-            for mut i in 0..vertex_iteration { // Number of vertices of branch
+            for i in 0..vertex_iteration { // Number of vertices of branch
 
                 // spiral_transform.translation.x =scale*0.001*i as f32 * (i as f32 * PI/16.).cos() + scale* 10.*(1.-1.*E.powf(-0.0001*i as f32)) * 1.*(1./64.*i as f32 * PI/16.).cos();
                 // spiral_transform.translation.y =scale* 0.5;//0.5;//0.2;
@@ -400,40 +384,27 @@ fn dive_to_sort(index: usize, branches: &mut Vec<Branch>) {
         parent_string
     }
 
-pub fn calc_rotation_matrix(a: Vec3, b: Vec3) -> Mat3 {
+pub fn _calc_rotation_matrix(a: Vec3, b: Vec3) -> Mat3 {
 
     // let a = vec3(0., 0.5, 0.);
     // let b = vec3(1., 0., 0.);
 
     let v = a.normalize().cross(b.normalize());
-    let s = ( v.x.exp2() + v.y.exp2() + v.z.exp2() ).sqrt();
+    let _s = ( v.x.exp2() + v.y.exp2() + v.z.exp2() ).sqrt();
     let c = a.normalize().dot(b.normalize());
     //Axis as rows
     let vx = mat3(vec3(0., -v.z, v.y), vec3(v.z, 0., -v.x), vec3(-v.y, v.x, 0.));
     //Axis as cols
     // let vx = mat3(vec3(0., v.z, -v.y), vec3(-v.z, 0., v.x), vec3(v.y, -v.x, 0.));
     
-    let vx2 = dot_product_mat3(vx, vx);
+    let vx2 = _dot_product_mat3(vx, vx);
     // let vx2 = vx*vx;
     let rot_mat = Mat3::IDENTITY + vx + vx2 *(1.0 - c);//((1.-c)/s.exp2());
     // println!("RotMat: {:?}", rot_mat);
     rot_mat
 }
 
-// pub fn calc_rotation_matrix(a: Vec3, b: Vec3) -> Mat3 {
-//     let v = a.normalize().cross(b.normalize());
-//     let c = a.normalize().dot(b.normalize());
-//     let vx = Mat3::from_cols(
-//         vec3(0., -v.z, v.y),
-//         vec3(v.z, 0., -v.x),
-//         vec3(-v.y, v.x, 0.)
-//     );
-//     let vx2 = vx * vx;
-//     let rot_mat = Mat3::IDENTITY + vx + vx2 * (1.0 - c);
-//     rot_mat
-// }
-
-fn dot_product_mat3(mat1: Mat3, mat2: Mat3) -> Mat3 {
+fn _dot_product_mat3(mat1: Mat3, mat2: Mat3) -> Mat3 {
     // let mut dot_product = 0.0;
     let mut result = Mat3::IDENTITY;
 
@@ -512,7 +483,7 @@ pub fn count_directories(path: &str) -> i32
 // SpiralTransform Parameter: a few...
 // Orientation Mode
 
-fn dive(name:&mut str, index: usize, branches: &mut Vec<Branch>, line_vertices: &mut Vec<Vec3>) -> () {
+fn _dive(name:&mut str, index: usize, branches: &mut Vec<Branch>, line_vertices: &mut Vec<Vec3>) -> () {
 
     // if index <= 100 {
     //     info!("\nIndex : {:?}\nParent: {:?}\nSiblings: {:?}",index, branches[index].parent, branches[branches[index].parent].children);   
@@ -664,7 +635,7 @@ fn dive(name:&mut str, index: usize, branches: &mut Vec<Branch>, line_vertices: 
             //
 
         }
-                    let mut save_i = i;
+                    let save_i = i;
                     if children[inner_child_index] == *children.last().unwrap() {
                         // i = branches[children[inner_child_index]].parent\
                         // if branches[branches[index].parent].num_of_children > 40 {
@@ -737,7 +708,7 @@ fn dive(name:&mut str, index: usize, branches: &mut Vec<Branch>, line_vertices: 
             // Assigning the node
             if i % extending_factor == extending_factor - 1 {
                 if branches.len() > children[inner_child_index] { // To prevent len == index for /
-                    let dir = pos - last_pos;
+                    let _dir = pos - last_pos;
                     
                     let mut rts = spiral_transform;
 
@@ -805,7 +776,7 @@ fn dive(name:&mut str, index: usize, branches: &mut Vec<Branch>, line_vertices: 
                 //     info!("Name: {:?}",branches[index].name);// = "last".to_owned();
                 // }
                 // println!("ChildIndex: {:?} \nBranchesLen: {:?}", child_index, branches.len());
-                dive(name, child_index, branches, line_vertices);
+                _dive(name, child_index, branches, line_vertices);
             }
         }
     }

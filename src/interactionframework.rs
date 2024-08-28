@@ -1,8 +1,9 @@
 use bevy::{
-    input::{keyboard::KeyCode, mouse::{MouseButtonInput, MouseMotion, MouseWheel}},
-    math::{bounding::{BoundingSphere, BoundingSphereCast, BoundingVolume, IntersectsVolume, RayCast3d}, primitives::Sphere, *}, pbr::{extract_meshes, wireframe::WireframeConfig, CascadeShadowConfigBuilder}, 
     prelude::*,
-    render::{camera::ScalingMode, mesh::{self, Indices, PrimitiveTopology}, render_resource::{AsBindGroup, ShaderRef}, view::{RenderLayers, VisibleEntities}}, transform::{self, commands}, utils::{info, HashSet}
+    input::{keyboard::KeyCode, mouse::MouseMotion},
+    math::{bounding::{BoundingSphere, IntersectsVolume, RayCast3d}, primitives::Sphere, *}, //pbr::{extract_meshes, wireframe::WireframeConfig, CascadeShadowConfigBuilder}, 
+    render::view::RenderLayers,
+    utils::HashSet
 };
 
 
@@ -18,17 +19,14 @@ pub struct Cam
 }
 
 
-use walkdir::{WalkDir, DirEntry};
+use walkdir::WalkDir;
 use generator::GenerationType;
 
-use crate::interactionframework;
 use crate::database;
 use crate::generator;
 
-
 #[derive(Component)]
 pub struct DisplayPathText;
-struct Cam2D;
 
 #[derive(Component)]
 pub struct TreeMeshMarker;
@@ -42,7 +40,7 @@ pub fn process_inputs_system(
     mut q_pp: Query<&mut Projection, With<Cam>>,
 
     // Update_Scale
-    mut tree: Query<(&mut Transform, &TreeMeshMarker), Without<Cam>>,
+    mut tree: Query<&mut Transform, (With<TreeMeshMarker>, Without<Cam>)>,
     mut tree_data: Option<ResMut<database::Tree>>,
 
     // Node_Picking
@@ -108,7 +106,7 @@ pub fn process_inputs_system(
             if keys.pressed(KeyCode::KeyE) {
                 delta.y += cam.speed;
             }
-///*
+
             // Manual Zoom 1. -> 0.1 -> 0.01 -> 0.001 -> ..
             if keys.pressed(KeyCode::Space) { // Zoom In
                 let mut i = 1;
@@ -193,27 +191,30 @@ pub fn process_inputs_system(
 
     // Update_Scale 
     if keys.pressed(KeyCode::Digit1) {
-        for (mut transform, cube) in &mut tree {
+        // for (mut transform, cube) in &mut tree {
+        for mut transform in &mut tree {
             transform.scale *= Vec3{x: 0.9,y:0.9,z: 0.9};
             // transform.translation.y += 2. * transform.scale.y;
         }
     }
 
     if keys.just_released(KeyCode::Digit1) {
-        for (transform, cube) in &mut tree {
-        if let Some(tree_data) = &mut tree_data {
-            // println!("Radius: {:?}", tree_data.bounds[2].sphere.radius);
-            for i in 0..tree_data.bounds.len(){
-                tree_data.bounds[i].center = tree_data.branches[i].transform.transform_point(Vec3::splat(0.));
-                tree_data.bounds[i].center *= transform.scale;
-                tree_data.bounds[i].sphere.radius = transform.scale.y + transform.scale.y*0.2;
-            }
+        // for (transform, cube) in &mut tree {
+        for transform in &mut tree {
+            if let Some(tree_data) = &mut tree_data {
+                // println!("Radius: {:?}", tree_data.bounds[2].sphere.radius);
+                for i in 0..tree_data.bounds.len(){
+                    tree_data.bounds[i].center = tree_data.branches[i].transform.transform_point(Vec3::splat(0.));
+                    tree_data.bounds[i].center *= transform.scale;
+                    tree_data.bounds[i].sphere.radius = transform.scale.y + transform.scale.y*0.2;
+                }
             }
         }
     }
     
     if keys.pressed(KeyCode::Digit2) {
-        for (mut transform, cube) in &mut tree {
+        // for (mut transform, cube) in &mut tree {
+        for mut transform in &mut tree {
             transform.scale *= Vec3{x: 1.1,y:1.1,z: 1.1};
 
             // transform.translation.y -= 2. * transform.scale.y;
@@ -221,16 +222,17 @@ pub fn process_inputs_system(
     }
 
     if keys.just_released(KeyCode::Digit2) {
-        for (transform, cube) in &mut tree {
-        if let Some(tree_data) = &mut tree_data {
-            for i in 0..tree_data.bounds.len(){
-                tree_data.bounds[i].center = tree_data.branches[i].transform.transform_point(Vec3::splat(0.));
-                tree_data.bounds[i].center *= transform.scale;
-                tree_data.bounds[i].sphere.radius = transform.scale.y + transform.scale.y*0.2;
-                }
+        // for (transform, cube) in &mut tree {
+        for transform in &mut tree {
+            if let Some(tree_data) = &mut tree_data {
+                for i in 0..tree_data.bounds.len(){
+                    tree_data.bounds[i].center = tree_data.branches[i].transform.transform_point(Vec3::splat(0.));
+                    tree_data.bounds[i].center *= transform.scale;
+                    tree_data.bounds[i].sphere.radius = transform.scale.y + transform.scale.y*0.2;
                 }
             }
         }
+    }
 
     // Reset to pos
     if keys.just_released(KeyCode::Tab) {
@@ -251,6 +253,7 @@ pub fn process_inputs_system(
         }
         else if *enter_cnt == 0. {
             spawn_generator_tree("/sys".to_string(), Vec3 { x: 0., y: 0., z: 0. }, &mut commands, &mut meshes,&mut materials, true, true);
+            *enter_cnt += 1.;
         }
         else {
             *enter_cnt += 1.;
@@ -279,7 +282,7 @@ pub fn process_inputs_system(
 
     // Node_Picking
     let window = q_window.single();
-    let (camera, mut camera_transform) = q_camera.single();
+    let (camera, camera_transform) = q_camera.single();
     let mut q_screen_text = q_screen_text_transform.iter_mut();//.iter_mut();
 
     if buttons.just_released(MouseButton::Left) {
@@ -373,7 +376,7 @@ pub fn process_inputs_system(
 
                 let ray_cast = RayCast3d::from_ray(cam_ray, 10000.);
 
-                for (i, branch, ) in tree_data.bounds.clone().into_iter().enumerate(){
+                for (_i, branch, ) in tree_data.bounds.clone().into_iter().enumerate(){
                     let cast_result = ray_cast.intersects(&branch);//BoundingSphereCast::from_ray(branch, world_position, 10000.);
                     if cast_result == true {
 
@@ -411,15 +414,14 @@ pub fn process_inputs_system(
 
                 if let Some(screen_position) = camera.world_to_ndc(camera_transform, tree_data.bounds[i].center){
                     
-                    let mut distance_vec;
-                    distance_vec = tree_data.bounds[i].center - camera_transform.translation();
+                    let distance_vec = tree_data.bounds[i].center - camera_transform.translation();
 
                     // Dot Product calculates the cos(angle) between to vecs
                     // -1 : Pointing in opposite directions
                     //  0 : Perpendicular
                     //  1 : Exactly same direction
-                    let mut dot_product = 0.;
-                    dot_product = distance_vec.normalize().dot(camera_transform.forward());
+
+                    let dot_product = distance_vec.normalize().dot(camera_transform.forward());
 
                     // info!("CameraForward: {:?} \nDotProdukt: {:?}", camera_transform.forward(), dot_product);
                     if dot_product > 0. {
@@ -477,19 +479,19 @@ pub fn process_inputs_system(
 
             let mut node_iter = detected_nodes.clone().into_iter();
 
-            let mut cnt = 0;
             // for node in detected_nodes.clone() {
             //     if cnt < 200 {
             //         info!("{:?} Node: {:?} \n{:?} {:?}",cnt, node.0, node.1, node.2 );
             //     }
             //     cnt += 1;
             // }
-            cnt = 0;
+            // cnt = 0;
+
             while let Some((mut text,mut text_transform)) = q_screen_text.next(){
                 if let Some(package) = node_iter.next(){//nth(cnt) {
                     text.sections[0].value = package.0.clone();
                     text_transform.translation = package.2;
-                    cnt += 1;
+
                 //         // #TODO:
                 //         // Following should be Switchable
 
@@ -518,7 +520,7 @@ pub fn process_inputs_system(
 
 
 
-fn spawn_tree (
+pub fn spawn_tree (
     path: String,
     pos: Vec3,
     param_set: (f32,f32,f32,f32),
@@ -530,16 +532,11 @@ fn spawn_tree (
     // window: Query<&Window>,
 
 ) {
-
     let mut main_tree = database::Tree::new();
+
     main_tree.construct(path); // No end "/" allowed
     // main_tree.construct("./TestTree/Tree".to_string()); // No end "/" allowed
-    // main_tree.construct("/home/nom/code/rust/storytree".to_string()); // No end "/" allowed
-    // main_tree.construct("/".to_string()); // No end "/" allowed
-    // main_tree.construct("./TestTree/Tree".to_string()); // No end "/" allowed
-    // main_tree.construct("/".to_string()); // No end "/" allowed
-    // main_tree.construct("/sys/devices/pci0000:00".to_string()); // No end "/" allowed
-    // main_tree.construct("/sys/devices/pci0000:00/0000:00:02.0/drm".to_string());
+    
     let mut tree_name: String = "000".to_string();
     commands.spawn((PbrBundle {
         mesh: meshes.add(main_tree.grow(&mut tree_name, param_set)
@@ -573,7 +570,7 @@ fn spawn_tree (
         commands.insert_resource(main_tree.clone());
     }
 
-    fn spawn_generator_tree (    
+    pub fn spawn_generator_tree (    
             path: String,
             pos: Vec3,
             commands: &mut Commands,
@@ -582,9 +579,7 @@ fn spawn_tree (
             textflag: bool,
             dodecaflag: bool) {
 
-        let (mut text_mesh,mut space_mesh,mut line_mesh);
-        // let path = "/sys";
-        (text_mesh, space_mesh, line_mesh) = generator::walk_path_to_mesh(path.as_ref(), GenerationType::Branch, 30, textflag, dodecaflag);
+        let (text_mesh, space_mesh, line_mesh) = generator::walk_path_to_mesh(path.as_ref(), GenerationType::Branch, 30, textflag, dodecaflag);
 
         commands.spawn((PbrBundle {
             mesh: meshes.add(line_mesh),
@@ -594,7 +589,7 @@ fn spawn_tree (
             transform: Transform::from_translation(pos),
             ..Default::default()
             },
-            TreeMeshMarker,  // Enable this to also scale nodes
+            TreeMeshMarker,  // Enable this to also scale nodes 
             RenderLayers::layer(0),
             )
             );

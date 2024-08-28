@@ -1,25 +1,12 @@
 
-use bevy::asset::io::memory::Data;
-use bevy::reflect::{Enum, TypeData};
 use bevy::render::mesh::{self, PrimitiveTopology};
-use bevy::math::*;      // Affine3A
+use bevy::math::*;   
 use bevy::prelude::*;   
 use bevy::render::render_asset::RenderAssetUsages;
-use bevy::utils::RandomState;
 use walkdir::{WalkDir, DirEntry};
-
 use meshtext::{MeshGenerator, MeshText, TextSection, QualitySettings, Face};
-use std::collections::LinkedList;
-use std::f32::consts::PI    ;
-use std::time::Instant;
-
-use std::ops::{Mul, Range};
 
 type PrimitiveTransform = [f32; 16];
-// enum MeshType {
-//     Text,
-//     Space,
-// }
 
 pub enum GenerationType {
     Cone, 
@@ -27,24 +14,6 @@ pub enum GenerationType {
     Branch,
     Tree, 
 }
-
-// /// A list of lines with a start and end position > https://bevyengine.org/examples/3D%20Rendering/lines/
-// #[derive(Debug, Clone)]
-// pub struct LineList {
-//     pub lines: Vec<(Vec3, Vec3)>,
-// }
-
-// impl From<LineList> for Mesh {
-//     fn from(line: LineList) -> Self {
-//         let vertices: Vec<_> = line.lines.into_iter().flat_map(|(a, b)| [a, b]).collect();
-
-//         // This tells wgpu that the positions are list of lines
-//         // where every pair is a start and end point
-//         Mesh::new(PrimitiveTopology::LineList)
-//             // Add the vertices positions as an attribute
-//             .with_inserted_attribute(Mesh::ATTRIBUTE_POSITION, vertices)
-//     }
-// }
 
 pub fn walk_path_to_mesh(entry_path: &str, generation_type: GenerationType, depth: usize, textflag: bool, dodecaflag: bool) -> (Mesh, Mesh, Mesh) 
 {   
@@ -151,7 +120,7 @@ fn calc_quat_from_rot_vec(rotation: Vec3) -> Quat {
 }
 
 fn calc_parent_transform(path: &str) -> Mat4 {
-    let mut parent_string = match path.rsplit_once("/") {
+    let parent_string = match path.rsplit_once("/") {
         Some(cut_path) => cut_path.0.to_string() ,
         None    => "/".to_string(),
     };
@@ -253,7 +222,7 @@ fn next_branch_transform(path: &str) -> Mat4 {
     }
     //3. Log naturalis, Bush
     else if false {
-        let cnt_dirs = dirs.clone().count();
+        // let cnt_dirs = dirs.clone().count();
 
         for (i, dir) in dirs.enumerate() {
             if !dir.is_empty(){
@@ -293,24 +262,22 @@ fn next_branch_transform(path: &str) -> Mat4 {
 }
 
 // Take lessons from branching and create nested nests
-fn next_tree_transform(cnt: f32, entry: &DirEntry) -> Mat4{
-    let mut transform :Mat4 = Default::default();
+fn next_tree_transform(_cnt: f32, _entry: &DirEntry) -> Mat4{
+    let transform :Mat4 = Default::default();
     transform
 }
     
 // Include Range, governed by count directories, split to 360 / numDirs - Adjusted by alphanumeric value in new range
-fn get_angle(mut current_angle: f32, c: char, word_num: usize, char_num: usize) -> f32
+fn get_angle(mut current_angle: f32, c: char, word_num: usize, _char_num: usize) -> f32
 {
     // Map char to char range as integer, map that integer to angle_range
     // 1. 0..2PI
     // 2. 2PI/NumDirectories == > New allowed angle? +- angle_range? 
 
-    let mut angle: f32 = 0.;
+    // let mut angle: f32 = 0.;
     let min_angle: f32 = 0.1745329252;// (2 * PI) / 36
 
-    let mut map_pos: i32 = 0;
-
-
+    let map_pos: i32;
     match c {
         'a' | 'A' => map_pos = -17,
         'b' | 'B' => map_pos = -16,
@@ -361,12 +328,12 @@ fn get_angle(mut current_angle: f32, c: char, word_num: usize, char_num: usize) 
     //     angle = current_angle;
     // }
 
-        current_angle += map_pos as f32 * min_angle; /// (10. * (char_num+1) as f32);
+        current_angle += map_pos as f32 * min_angle; // (10. * (char_num+1) as f32);
         // angle += angle.powf((word_num*char_num )as f32);
         current_angle
     }
     else {
-        current_angle = (map_pos as f32 * min_angle) * 0.5f32.powf(word_num as f32); /// (10. * (word_num + char_num) as f32);
+        current_angle = (map_pos as f32 * min_angle) * 0.5f32.powf(word_num as f32); // (10. * (word_num + char_num) as f32);
         current_angle
     }      
 
@@ -387,7 +354,7 @@ fn extend_text_vec(vertices: &mut Vec<f32>, generator: &mut MeshGenerator<Face>,
 
 // Creates the dodecaeder
 pub fn extend_space_vec(space_vertices: &mut Vec<[f32; 3]>, space_indices: &mut Vec<u32>, transform: &Mat4, cnt: f32){
-    let PHI: f32 = 1.618033989; 
+    const PHI: f32 = 1.618033989; 
     let ground_vertices: [[f32; 3]; 20] =   
     [   [  0.,      -1./PHI,  -PHI ], // 0
         [  1.,      -1.,      -1.  ], // 1
@@ -470,26 +437,6 @@ pub fn extend_space_vec(space_vertices: &mut Vec<[f32; 3]>, space_indices: &mut 
 
     ]); 
 
-
-    // // Multiply indizes
-    // let add_indi = 20 * (cnt as u32);
-    // space_indices.extend(vec![  
-
-    //      0+add_indi,  1+add_indi,  2+add_indi,  0+add_indi,  2+add_indi,  3+add_indi,  0+add_indi,  3+add_indi,  4+add_indi,
-    //      6+add_indi,  5+add_indi,  3+add_indi,  6+add_indi,  3+add_indi,  2+add_indi,  6+add_indi,  2+add_indi,  7+add_indi, 
-    //      2+add_indi,  1+add_indi,  9+add_indi,  2+add_indi,  9+add_indi,  8+add_indi,  2+add_indi,  8+add_indi,  7+add_indi,
-    //      3+add_indi,  5+add_indi, 11+add_indi,  3+add_indi, 11+add_indi, 10+add_indi,  3+add_indi, 10+add_indi,  4+add_indi,
-    //      5+add_indi,  6+add_indi, 13+add_indi,  5+add_indi, 13+add_indi, 12+add_indi,  5+add_indi, 12+add_indi, 11+add_indi, 
-    //      1+add_indi,  0+add_indi, 16+add_indi,  1+add_indi, 16+add_indi, 15+add_indi,  1+add_indi, 15+add_indi,  9+add_indi, 
-    //      7+add_indi,  8+add_indi, 14+add_indi,  7+add_indi, 14+add_indi, 13+add_indi,  7+add_indi, 13+add_indi,  6+add_indi, 
-    //      4+add_indi, 10+add_indi, 17+add_indi,  4+add_indi, 17+add_indi, 16+add_indi,  4+add_indi, 16+add_indi,  0+add_indi, 
-    //     13+add_indi, 14+add_indi, 19+add_indi, 13+add_indi, 19+add_indi, 18+add_indi, 13+add_indi, 18+add_indi, 12+add_indi, 
-    //     16+add_indi, 17+add_indi, 18+add_indi, 16+add_indi, 18+add_indi, 19+add_indi, 16+add_indi, 19+add_indi, 15+add_indi, 
-    //     18+add_indi, 17+add_indi, 10+add_indi, 18+add_indi, 10+add_indi, 11+add_indi, 18+add_indi, 11+add_indi, 12+add_indi, 
-    //     19+add_indi, 14+add_indi, 8 +add_indi, 19+add_indi, 8 +add_indi,  9+add_indi, 19+add_indi,  9+add_indi, 15+add_indi, 
-
-    // ]); 
-
         // Convert the transformation matrix to Mat4
         // let transform_matrix = Mat4::from_cols_array(&transform);
 
@@ -528,11 +475,11 @@ fn extend_line_list_vec(line_vertices: &mut Vec<Vec3>, transform: &Mat4, parent_
 }
 
     // use just this for linestrip in order of calls, 
-fn extend_line_strip_vec(line_vertices: &mut Vec<Vec3>, transform: &PrimitiveTransform, cnt: f32, entry: &DirEntry) {
+fn _extend_line_strip_vec(line_vertices: &mut Vec<Vec3>, transform: &PrimitiveTransform, _cnt: f32, _entry: &DirEntry) {
     line_vertices.push(Mat4::from_cols_array(&transform).transform_point3(Vec3::default()));
 }
 
-fn count_directories(path: &str) -> i32{
+fn _count_directories(path: &str) -> i32{
     let mut cnt = -1;
     for entry in WalkDir::new(path).max_depth(1).into_iter().filter_map(|e| e.ok()) {
         if entry.file_type().is_dir() {
@@ -541,7 +488,7 @@ fn count_directories(path: &str) -> i32{
 }
 
 // replace rotation with Vec3 when working, only uses Y right now
-fn generate_primitive_transfrom(roation: Vec3, translation: Vec3) -> PrimitiveTransform {
+fn _generate_primitive_transfrom(roation: Vec3, translation: Vec3) -> PrimitiveTransform {
     (Mat4::from_rotation_y(-roation.y) * Mat4::from_translation(translation))
     .to_cols_array()
 }
