@@ -18,7 +18,6 @@ pub struct Cam
     pub rot:   Quat,
 }
 
-
 use walkdir::WalkDir;
 use generator::GenerationType;
 
@@ -36,10 +35,12 @@ pub fn process_inputs_system(
     keys: Res<ButtonInput<KeyCode>>,
     mut q_transform: Query<&mut Transform, With<Cam>>,
     mut q_cam: Query<&mut Cam>,  
+
     mut mouse_motion_events: EventReader<MouseMotion>,
-    mut q_pp: Query<&mut Projection, With<Cam>>,
+    mut q_perspektiveprojection: Query<&mut Projection, With<Cam>>,
 
     // Update_Scale
+
     mut tree: Query<&mut Transform, (With<TreeMeshMarker>, Without<Cam>)>,
     mut tree_data: Option<ResMut<database::Tree>>,
 
@@ -60,18 +61,10 @@ pub fn process_inputs_system(
     mut input_path: Local<String>,
     mut enter_cnt: Local<f32>
 ) {
-
     // Single Instance to avoid iterating queue
     let mut cam = q_cam.single_mut();
 
-    // let cam = q_cam.single_mut(){
-    //     info!("camarrived");
-    // }
-    // else {
-    //     error!("camarrivednot");
-    // }
-
-    // Update Cam Yaw & Pitch  // adjust for very small fovs
+    // Update Cam Yaw & Pitch  // adjusted for very small fovs
     for event in mouse_motion_events.read() {
             cam.yaw   += -event.delta.x * cam.fov; 
             cam.pitch += -event.delta.y * cam.fov; 
@@ -83,85 +76,25 @@ pub fn process_inputs_system(
         let mut temp_transform: Transform = Transform{ translation: transform.translation, rotation: transform.rotation, scale: transform.scale,};
 
         // Calculate rotation
-        temp_transform.rotation = Quat::from_rotation_y(cam.yaw * 0.005)* Quat::from_rotation_x(cam.pitch * 0.005)  ;  
+        temp_transform.rotation = Quat::from_rotation_y(cam.yaw   * 0.005)
+                                * Quat::from_rotation_x(cam.pitch * 0.005); 
+
+        // Adjust Zoom and Speed
+        if keys.pressed(KeyCode::Space      ) { cam.fov   /= 1.25;} // Zoom In
+        if keys.pressed(KeyCode::AltLeft    ) { cam.fov   *= 1.25;} // Zoom Out
+        if keys.pressed(KeyCode::ShiftLeft  ) { cam.speed *= 1.25;} // Speed Up
+        if keys.pressed(KeyCode::ControlLeft) { cam.speed /= 1.25;} // Speed Down
 
         // Tastatursteuerung, deltatranslation
         let translation_delta = {
-            let mut delta = Vec3::ZERO;
-            if keys.pressed(KeyCode::KeyW) {
-                delta.z -= cam.speed;
-            }
-            if keys.pressed(KeyCode::KeyS) {
-                delta.z += cam.speed;
-            }
-            if keys.pressed(KeyCode::KeyA) {
-                delta.x -= cam.speed;
-            }
-            if keys.pressed(KeyCode::KeyD) {
-                delta.x += cam.speed;
-            }
-            if keys.pressed(KeyCode::KeyQ) {
-                delta.y -= cam.speed;
-            }
-            if keys.pressed(KeyCode::KeyE) {
-                delta.y += cam.speed;
-            }
-
-            // Manual Zoom 1. -> 0.1 -> 0.01 -> 0.001 -> ..
-            if keys.pressed(KeyCode::Space) { // Zoom In
-                let mut i = 1;
-                while (1. - cam.fov * 10.0_f32.powf(i as f32)) >= 0. {
-                    i += 1;
-                }
-                cam.fov -= 0.1_f32.powf(i as f32);
-
-            }
-            if keys.pressed(KeyCode::AltLeft) { // Zoom Out
-                let mut i = 0;
-
-                if cam.fov < 1. {
-                    while (1. - cam.fov * 10.0_f32.powf(i as f32)) >= 0. {
-                        i += 1;
-                        // println!("{:?} :: {:?}",cam.fov,  i);
-                    }
-                    cam.fov += 0.1_f32.powf(i as f32);
-                }   
-                else {
-                    i = 1;
-                    while (1. - cam.fov / 10.0_f32.powf(i as f32)) <= 0. {
-                        i += 1;
-                        // println!("{:?} :: {:?}",cam.fov,  i);
-                    }
-                    cam.fov += 0.1_f32.powf(i as f32);
-                }    
-
-                if cam.fov > 3.0 {
-                    cam.fov = 3.0
-                }
-                else {
-                    cam.fov += 0.1_f32.powf(i as f32);
-                }
-            }
- //*/
-            // if keys.pressed(KeyCode::Space) { // Zoom Out
-            //     cam.fov /= 1.25;
-            // }
-            // if keys.pressed(KeyCode::AltLeft) { // Zoom Out
-
-            //     cam.fov *= 1.25;
-            // }
-
-            // Adjust Speed
-            if keys.pressed(KeyCode::ShiftLeft) {
-                cam.speed += 1.07;
-            }
-            if keys.pressed(KeyCode::ControlLeft) {
-                cam.speed -= 1.07;
-
-                // treebuilder::print_hello();
-            }
-            delta
-        };
+        let mut delta = Vec3::ZERO;
+        if keys.pressed(KeyCode::KeyW) {delta.z -= cam.speed;}
+        if keys.pressed(KeyCode::KeyS) {delta.z += cam.speed;}
+        if keys.pressed(KeyCode::KeyA) {delta.x -= cam.speed;}
+        if keys.pressed(KeyCode::KeyD) {delta.x += cam.speed;}
+        if keys.pressed(KeyCode::KeyQ) {delta.y -= cam.speed;}
+        if keys.pressed(KeyCode::KeyE) {delta.y += cam.speed;}
+        delta};
 
         // Update actual cam transformation
         temp_transform.translation += temp_transform.rotation * translation_delta;
@@ -171,40 +104,39 @@ pub fn process_inputs_system(
         cam.pos = transform.translation;
         cam.rot = transform.rotation;
 
-        // Update actual fov / perspective / to zoom to an extend
-        for mut pp in q_pp.iter_mut() {
-            
-            // Perspective Projection Update
-            *pp = PerspectiveProjection {
-                fov: cam.fov,
-                aspect_ratio: 1.0,
-                ..default()
-            }.into()
+        // Update actual fov / perspective / to zoom 
+        let mut pp = q_perspektiveprojection.single_mut();
+        *pp = PerspectiveProjection {fov: cam.fov, aspect_ratio: 1.0, ..default()}.into();
 
-            // Orthographic Projection Update
-            // *pp = OrthographicProjection {
-            //     scale: cam.fov,
-            //     ..Default::default()
-            // }.into()
-        }
     }
+
+    //     // Update actual fov / perspective / to zoom to an extend
+    //     for mut pp in q_perspektiveprojection.iter_mut() {
+    //         *pp = PerspectiveProjection {
+    //             fov: cam.fov,
+    //             aspect_ratio: 1.0,
+    //             ..default()
+    //         }.into()
+
+    //         // Orthographic Projection Update
+    //         // *pp = OrthographicProjection {
+    //         //     scale: cam.fov,
+    //         //     ..Default::default()
+    //         // }.into()
+    //     }
+    // }
 
     // Update_Scale 
     if keys.pressed(KeyCode::Digit1) {
-        // for (mut transform, cube) in &mut tree {
         for mut transform in &mut tree {
-            transform.scale *= Vec3{x: 0.9,y:0.9,z: 0.9};
-            // transform.translation.y += 2. * transform.scale.y;
-        }
+            transform.scale *= Vec3{x: 0.9,y:0.9,z: 0.9};}
     }
 
     if keys.just_released(KeyCode::Digit1) {
-        // for (transform, cube) in &mut tree {
         for transform in &mut tree {
             if let Some(tree_data) = &mut tree_data {
-                // println!("Radius: {:?}", tree_data.bounds[2].sphere.radius);
                 for i in 0..tree_data.bounds.len(){
-                    tree_data.bounds[i].center = tree_data.branches[i].transform.transform_point(Vec3::splat(0.));
+                    tree_data.bounds[i].center = tree_data.branches[i].transform.translation;
                     tree_data.bounds[i].center *= transform.scale;
                     tree_data.bounds[i].sphere.radius = transform.scale.y + transform.scale.y*0.2;
                 }
@@ -213,20 +145,16 @@ pub fn process_inputs_system(
     }
     
     if keys.pressed(KeyCode::Digit2) {
-        // for (mut transform, cube) in &mut tree {
         for mut transform in &mut tree {
             transform.scale *= Vec3{x: 1.1,y:1.1,z: 1.1};
-
-            // transform.translation.y -= 2. * transform.scale.y;
         }
     }
 
     if keys.just_released(KeyCode::Digit2) {
-        // for (transform, cube) in &mut tree {
         for transform in &mut tree {
             if let Some(tree_data) = &mut tree_data {
                 for i in 0..tree_data.bounds.len(){
-                    tree_data.bounds[i].center = tree_data.branches[i].transform.transform_point(Vec3::splat(0.));
+                    tree_data.bounds[i].center = tree_data.branches[i].transform.translation;
                     tree_data.bounds[i].center *= transform.scale;
                     tree_data.bounds[i].sphere.radius = transform.scale.y + transform.scale.y*0.2;
                 }
@@ -671,3 +599,38 @@ fn to_box(pos: Vec3, box_size: f64) -> (i64, i64, i64) {
         (pos.z as f64 / box_size).floor() as i64,
     )
 }
+
+
+    // Old Infinty zoom
+    // Manual Zoom 1. -> 0.1 -> 0.01 -> 0.001 -> ..
+    // if keys.pressed(KeyCode::Space) { // Zoom In
+    //     let mut i = 1;
+    //     while (1. - cam.fov * 10.0_f32.powf(i as f32)) >= 0. {
+    //         i += 1;
+    //     }
+    //     cam.fov -= 0.1_f32.powf(i as f32);
+    // }
+    // if keys.pressed(KeyCode::AltLeft) { // Zoom Out
+    //     let mut i = 0;
+
+    //     if cam.fov < 1. {
+    //         while (1. - cam.fov * 10.0_f32.powf(i as f32)) >= 0. {
+    //             i += 1;
+    //         }
+    //         cam.fov += 0.1_f32.powf(i as f32);
+    //     }   
+    //     else {
+    //         i = 1;
+    //         while (1. - cam.fov / 10.0_f32.powf(i as f32)) <= 0. {
+    //             i += 1;
+    //         }
+    //         cam.fov += 0.1_f32.powf(i as f32);
+    //     }    
+
+    //     if cam.fov > 3.0 {
+    //         cam.fov = 3.0
+    //     }
+    //     else {
+    //         cam.fov += 0.1_f32.powf(i as f32);
+    //     }
+    // }

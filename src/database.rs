@@ -313,10 +313,14 @@ fn dive_to_sort(index: usize, branches: &mut Vec<Branch>) {
                 // spiral_transform.translation.y = scale * param_set.2 * i as f32 *  0.3;//param_set.0 + scale* 1.;
                 // spiral_transform.translation.z = scale * (param_set.2 * (i as f32 * PI/16. * param_set.3).sin() + param_set.0 * i as f32);// + scale* 10.*(1.-1.*E.powf(-0.0001*i as f32)) * 1.*(1./64.*i as f32 * PI/16.).sin();
 
-                spiral_transform.translation.x =scale* ( 0.001*i as f32 * (i as f32 * PI/16. + param_set.3).cos() + scale* 10.*(1.-1.*E.powf(-0.0001*i as f32)) * 1.*(1./64.*i as f32 * PI/16.).cos());
-                spiral_transform.translation.y =0.01 + branches[index].depth as f32 * 0.1 * scale;//(branches[index].depth as f32 *0.01);// + 0.1 * i as f32) * scale;//param_set.3*scale* 1.;//0.5;//0.2;
-                spiral_transform.translation.z =scale* ( 0.001*i as f32 * (i as f32 * PI/16.).sin() + scale* 10.*(1.-1.*E.powf(-0.0001*i as f32)) * 1.*(1./64.*i as f32 * PI/16.).sin());
-           
+
+                // todo find all the things!
+                spiral_transform.translation.x =scale* ( 0.001*i as f32 * (i as f32 * PI/16.).cos()  + scale* 10.*(1.-1.*E.powf(-0.0001*i as f32)) * 1.*(1./64.*i as f32 * PI/27.).cos());
+                spiral_transform.translation.y =0.01 + branches[index].depth as f32 * 0.1 * scale;  //(branches[index].depth as f32 *0.01);// + 0.1 * i as f32) * scale;//param_set.3*scale* 1.;//0.5;//0.2;
+                spiral_transform.translation.z =scale* ( 0.001*i as f32 * (i as f32 * PI/16.).sin() + scale* 10.*(1.-1.*E.powf(-0.0001*i as f32)) * 1.*(1./64.*i as f32 * PI/99.).sin());
+                
+                //27 zu 216 hinten modern art
+                
                 // Spiral Backup
                 // spiral_transform.translation.x =scale* ( 0.001*i as f32 * (i as f32 * PI/16.).cos() + scale* 10.*(1.-1.*E.powf(-0.0001*i as f32)) * 1.*(1./64.*i as f32 * PI/16.).cos());
                 // spiral_transform.translation.y =scale * 1.;//param_set.3*scale* 1.;//0.5;//0.2;
@@ -655,7 +659,7 @@ fn _dive(name:&mut str, index: usize, branches: &mut Vec<Branch>, line_vertices:
                         scale = 1.;
                         spiral_transform.translation.x =scale*0.001*i as f32 * (i as f32 * PI/16.).cos() + scale* 10.*(1.-1.*E.powf(-0.0001*i as f32)) * 1.*(1./64.*i as f32 * PI/16.).cos();
                         spiral_transform.translation.y =scale* 0.5;//0.5;//0.2;
-                        spiral_transform.translation.z =scale*0.001*i as f32 * (i as f32 * PI/16.).sin() + scale* 10.*(1.-1.*E.powf(-0.0001*i as f32)) * 1.*(1./64.*i as f32 * PI/16.).sin();
+                        spiral_transform.translation.z =scale*0.001*i as f32 * (i as f32 * PI/16.).sin() + scale* 10.*(1.-1.*E.powf(-0.0001*i as f32)) * 1.*(1./64.*i as f32 * PI/26.).sin();
                    
                     }
                     else {

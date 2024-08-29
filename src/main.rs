@@ -4,7 +4,7 @@
 //         panic!("You must run this executable with root permissions");
 //     }
 // }
-
+use bevy::time::Time;
 use bevy::prelude::*;
 use std::f32::consts::PI;
 use interactionframework::process_inputs_system;
@@ -28,11 +28,16 @@ fn setup(
     asset_server: Res<AssetServer>,
 
     // For Spawning trees in Setup
-    // mut meshes: ResMut<Assets<Mesh>>,
-    // mut materials: ResMut<Assets<StandardMaterial>>,
+    mut meshes: ResMut<Assets<Mesh>>,
+    mut materials: ResMut<Assets<StandardMaterial>>,
+
+    time: Res<Time>
 ) {
     // Spwan MemoryTree
-    // interactionframework::spawn_tree("/sys".to_string(), Vec3 { x: 0., y: 0., z: 0. }, (1.,0.9,0.5,1.1), &mut commands, &mut meshes,&mut materials);
+    let start = time.elapsed();//time.elapsed();
+    interactionframework::spawn_tree("/".to_string(), Vec3 { x: 0., y: 0., z: 0. }, (1.,0.9,0.5,1.1), &mut commands, &mut meshes,&mut materials);
+    let end = time.elapsed();
+    info!("Generationtime: {:?} {:?}", start, end );
     // interactionframework::spawn_generator_tree("/sys".to_string(), Vec3 { x: 0., y: 0., z: 0. }, &mut commands, &mut meshes,&mut materials, true, true);
 
     // Plane
@@ -102,6 +107,7 @@ fn setup(
         ));
     }
     println!("Number of spawned text display buffer: {:?}", cnt);
+
 
 }
 
