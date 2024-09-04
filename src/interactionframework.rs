@@ -6,7 +6,7 @@ use bevy::{
     utils::HashSet
 };
 
-
+ 
 #[derive(Component, Debug)]
 pub struct Cam
 {
@@ -33,7 +33,7 @@ pub struct TreeMeshMarker;
 pub fn process_inputs_system(
     // Cam_Control
     keys: Res<ButtonInput<KeyCode>>,
-    mut q_transform: Query<&mut Transform, With<Cam>>,
+    mut q_cam_transform: Query<&mut Transform, With<Cam>>,
     mut q_cam: Query<&mut Cam>,  
 
     mut mouse_motion_events: EventReader<MouseMotion>,
@@ -71,7 +71,7 @@ pub fn process_inputs_system(
     }
 
     // Update transform from keyboardinput and Yaw&Pitch
-    for mut transform in q_transform.iter_mut() {
+    for mut transform in q_cam_transform.iter_mut() {
 
         let mut temp_transform: Transform = Transform{ translation: transform.translation, rotation: transform.rotation, scale: transform.scale,};
 
@@ -164,7 +164,7 @@ pub fn process_inputs_system(
 
     // Reset to pos
     if keys.just_released(KeyCode::Tab) {
-            let mut cam_transform = q_transform.single_mut();
+            let mut cam_transform = q_cam_transform.single_mut();
         
             let pos = vec3(0., 5000., 10000.);
             cam_transform.translation = pos;
@@ -180,7 +180,7 @@ pub fn process_inputs_system(
             *enter_cnt = 1.;
         }
         else if *enter_cnt == 0. {
-            spawn_generator_tree("/sys".to_string(), Vec3 { x: 0., y: 0., z: 0. }, &mut commands, &mut meshes,&mut materials, true, true);
+            spawn_generator_tree("/sys".to_string(), Vec3 { x: 0., y: 0., z: 0. }, &mut commands, &mut meshes,&mut materials, true, true, 30);
             *enter_cnt += 1.;
         }
         else {
@@ -308,7 +308,7 @@ pub fn process_inputs_system(
                     let cast_result = ray_cast.intersects(&branch);//BoundingSphereCast::from_ray(branch, world_position, 10000.);
                     if cast_result == true {
 
-                        let mut cam_transform = q_transform.single_mut();
+                        let mut cam_transform = q_cam_transform.single_mut();
                         
                         cam_transform.translation = branch.center;//Vec3::splat(1000.);//0.9 * (cam_transform.translation - branch.center);//branch.center - cam.pos;
                         cam.pos = cam_transform.translation;
@@ -470,7 +470,7 @@ pub fn spawn_tree (
         mesh: meshes.add(main_tree.grow(&mut tree_name, param_set)
     ),
         material: materials.add(
-            Color::rgba(1., 0., 0., 1.0),
+            Color::rgba(0., 0., 1., 1.0),
         ),
         transform: Transform::from_translation(pos),
         ..Default::default()
@@ -485,7 +485,7 @@ pub fn spawn_tree (
         mesh: meshes.add(main_tree.mesh_nodes()
     ),
         material: materials.add(
-            Color::rgba(0.8, 0.4, 0.3, 1.0),
+            Color::rgba(0.74, 0.3, 0.1, 1.0),
         ),
         transform: Transform::from_translation(pos),
         ..Default::default()
@@ -505,14 +505,22 @@ pub fn spawn_tree (
             meshes: &mut ResMut<Assets<Mesh>>,
             materials: &mut ResMut<Assets<StandardMaterial>>,
             textflag: bool,
-            dodecaflag: bool) {
+            dodecaflag: bool, 
+            depth: usize
+        ) {
 
-        let (text_mesh, space_mesh, line_mesh) = generator::walk_path_to_mesh(path.as_ref(), GenerationType::Branch, 30, textflag, dodecaflag);
+        let (text_mesh, space_mesh, line_mesh) = generator::walk_path_to_mesh(path.as_ref(), GenerationType::Branch, depth, textflag, dodecaflag);
+
+            text_mesh.count_vertices();
+
+        info!(">SizeofTextMesh: {:?} bytes",text_mesh.count_vertices() * 3 * core::mem::size_of::<f32>());
+        info!(">SizeofSpacMesh: {:?} bytes",space_mesh.count_vertices()* 3 * core::mem::size_of::<f32>());
+        info!(">SizeofLineMesh: {:?} bytes",line_mesh.count_vertices()* 3 * core::mem::size_of::<f32>());
 
         commands.spawn((PbrBundle {
             mesh: meshes.add(line_mesh),
             material: materials.add(
-                Color::rgba(0.5, 0.2, 0.1, 1.0),
+                Color::rgba(0.8, 0.4, 0.3, 1.0),
             ),
             transform: Transform::from_translation(pos),
             ..Default::default()
@@ -528,6 +536,7 @@ pub fn spawn_tree (
                 Color::rgba(0.8, 0.4, 0.3, 1.0),
             ),
             // transform: Transform::from_translationpos),
+            transform: Transform::from_translation(pos),
             ..Default::default()
             },
             TreeMeshMarker,  // Enable this to also scale nodes
@@ -541,6 +550,7 @@ pub fn spawn_tree (
                 Color::rgba(0.8, 0.4, 0.3, 1.0),
             ),
             // transform: Transform::from_translationpos),
+            transform: Transform::from_translation(pos),
             ..Default::default()
             },
             TreeMeshMarker,  // Enable this to also scale nodes

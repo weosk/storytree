@@ -69,7 +69,7 @@ pub fn walk_path_to_mesh(entry_path: &str, generation_type: GenerationType, dept
     let mut space_mesh : Mesh = Mesh::new(PrimitiveTopology::TriangleList, RenderAssetUsages::default());
     let mut line_mesh : Mesh = Mesh::new(PrimitiveTopology::LineList, RenderAssetUsages::default());
 
-    let text_uvs =  vec![[0f32, 0f32]; text_vertices.len()];
+    let text_uvs =  vec![[0f32, 0f32]; text_vertices.len() ];
     let space_uvs = vec![[0f32, 0f32]; space_vertices.len()];
 
     let text_vertex_positions: Vec<[f32; 3]> = text_vertices.chunks(3).map(|c| [c[0], c[1], c[2]]).collect();
@@ -146,6 +146,7 @@ fn next_branch_transform(path: &str) -> Mat4 {
     let dirs = path.split("/");
 
     if true {
+
     // Iterate over dirs and calculate a transform for each one / word iterater == depth, angle given through string
     for (i, dir) in dirs.enumerate() {
         
@@ -163,7 +164,7 @@ fn next_branch_transform(path: &str) -> Mat4 {
 
         // // Scale experimentation
         scale = Vec3::splat(0.5);
-        let base:f32 = 0.7;
+        let base:f32 = 0.9;
         if i >= 2{                 
             let scalf = base.powf(i as f32);
             scale = Vec3::splat(scalf);
@@ -172,9 +173,7 @@ fn next_branch_transform(path: &str) -> Mat4 {
         // Stack unique word transforms together for full path transform // Normal Way would be L = T * R * S  -> Order is S then R then T, but we use angletravel
         transform *= Mat4::from_rotation_y(rotation.y) * Mat4::from_rotation_x(rotation.x)  *  Mat4::from_translation(translation) * Mat4::from_scale(scale);
     }
-    
-
-}
+    }
 
     // 2. Treetrunk // for / this puts out a bit of split, for experimentation
      else if false{ // more space for experimentation
