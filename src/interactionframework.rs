@@ -1,5 +1,6 @@
 use bevy::{
     prelude::*,
+    math::Vec3A,
     input::{keyboard::KeyCode, mouse::MouseMotion},
     math::{bounding::{BoundingSphere, IntersectsVolume, RayCast3d}, primitives::Sphere, *}, //pbr::{extract_meshes, wireframe::WireframeConfig, CascadeShadowConfigBuilder}, 
     render::view::RenderLayers,
@@ -136,8 +137,8 @@ pub fn process_inputs_system(
         for transform in &mut tree {
             if let Some(tree_data) = &mut tree_data {
                 for i in 0..tree_data.bounds.len(){
-                    tree_data.bounds[i].center = tree_data.branches[i].transform.translation;
-                    tree_data.bounds[i].center *= transform.scale;
+                    tree_data.bounds[i].center = tree_data.branches[i].transform.translation.into();
+                    tree_data.bounds[i].center *= Vec3A::from(transform.scale);
                     tree_data.bounds[i].sphere.radius = transform.scale.y + transform.scale.y*0.2;
                 }
             }
@@ -154,8 +155,8 @@ pub fn process_inputs_system(
         for transform in &mut tree {
             if let Some(tree_data) = &mut tree_data {
                 for i in 0..tree_data.bounds.len(){
-                    tree_data.bounds[i].center = tree_data.branches[i].transform.translation;
-                    tree_data.bounds[i].center *= transform.scale;
+                    tree_data.bounds[i].center = tree_data.branches[i].transform.translation.into();
+                    tree_data.bounds[i].center *= Vec3A::from(transform.scale);
                     tree_data.bounds[i].sphere.radius = transform.scale.y + transform.scale.y*0.2;
                 }
             }
@@ -310,7 +311,7 @@ pub fn process_inputs_system(
 
                         let mut cam_transform = q_cam_transform.single_mut();
                         
-                        cam_transform.translation = branch.center;//Vec3::splat(1000.);//0.9 * (cam_transform.translation - branch.center);//branch.center - cam.pos;
+                        cam_transform.translation = branch.center.into();//Vec3::splat(1000.);//0.9 * (cam_transform.translation - branch.center);//branch.center - cam.pos;
                         cam.pos = cam_transform.translation;
 
                         // Teleport camera to clicked place
@@ -340,22 +341,23 @@ pub fn process_inputs_system(
             let cast_result = bound_sphere.intersects(&branch);//BoundingSphereCast::from_ray(branch, world_position, 10000.);
             if cast_result == true {
 
-                if let Some(screen_position) = camera.world_to_ndc(camera_transform, tree_data.bounds[i].center){
+                if let Some(screen_position) = camera.world_to_ndc(camera_transform, tree_data.bounds[i].center.into()){
                     
-                    let distance_vec = tree_data.bounds[i].center - camera_transform.translation();
+                    let distance_vec : Vec3 = tree_data.bounds[i].center.as_dvec3().as_vec3() - camera_transform.translation();
 
                     // Dot Product calculates the cos(angle) between to vecs
                     // -1 : Pointing in opposite directions
                     //  0 : Perpendicular
                     //  1 : Exactly same direction
 
-                    let dot_product = distance_vec.normalize().dot(camera_transform.forward());
+                    // let dot_product = distance_vec.normalize().dot(camera_transform.forward());
+                    let dot_product = distance_vec.normalize().dot(camera_transform.forward().as_vec3().into());
 
                     // info!("CameraForward: {:?} \nDotProdukt: {:?}", camera_transform.forward(), dot_product);
                     if dot_product > 0. {
                         // info!("Dot > 0!");
 
-                        let distance = camera_transform.translation().distance(tree_data.bounds[i].center);
+                        let distance = camera_transform.translation().distance(tree_data.bounds[i].center.into());
                         let distance_int = distance as i32;
 
                         // info!("Distance: {:?} {:?}", distance, distance_int);
@@ -565,7 +567,7 @@ fn calc_variance(bounds:& Vec<BoundingSphere>) -> Vec3 {
     let mut cnt = 0;
     let mut focal_point = Vec3::default();
     for sphere in bounds {
-        focal_point += sphere.center;
+        focal_point += Vec3::from(sphere.center);
         // info!("{:?} Spehre: {:?} ",cnt, sphere.center);
         cnt += 1;
     }
@@ -597,7 +599,7 @@ fn calc_variance(bounds:& Vec<BoundingSphere>) -> Vec3 {
 fn calc_fractal_dimension(spheres: & Vec<BoundingSphere>, box_size: f64) -> usize {
     let mut unique_boxes: HashSet<(i64, i64, i64)> = HashSet::new();
     for sphere in spheres {
-        unique_boxes.insert(to_box(sphere.center,box_size));
+        unique_boxes.insert(to_box(Vec3::from(sphere.center),box_size));
     }
     unique_boxes.len()
 }

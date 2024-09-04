@@ -14,22 +14,39 @@ mod interactionframework;
 mod generator;
 mod database;
 
-use bevy::diagnostic::FrameTimeDiagnosticsPlugin;
+// use bevy::diagnostic::FrameTimeDiagnosticsPlugin;
 
 fn main() {
     App::new()
         .add_plugins(DefaultPlugins)
         .insert_resource(ClearColor(Color::rgb(1.0, 1., 1.0))) // Background 2 Darkblu
         .add_systems(Startup, setup)
-        .add_systems(Update, (bevy::window::close_on_esc, process_inputs_system, animate_light_direction))
+        .add_systems(Update, (close_on_esc, process_inputs_system, animate_light_direction))
         // .insert_resource(AmbientLight {color: Color::Rgba {red: 0.95,green: 0.3,blue: 1.0,alpha:1.0,},brightness: 0.5,},)
         // .add_plugins(FrameTimeDiagnosticsPlugin::default())
-        .add_plugins(FrameTimeDiagnosticsPlugin::default())
+        // .add_plugins(FrameTimeDiagnosticsPlugin::default())
 
   
 
         .run();
 }
+
+pub fn close_on_esc(
+    mut commands: Commands,
+    focused_windows: Query<(Entity, &Window)>,
+    input: Res<ButtonInput<KeyCode>>,
+) {
+    for (window, focus) in focused_windows.iter() {
+        if !focus.focused {
+            continue;
+        }
+
+        if input.just_pressed(KeyCode::Escape) {
+            commands.entity(window).despawn();
+        }
+    }
+}
+
 
 fn setup(
     mut commands: Commands,
@@ -42,15 +59,15 @@ fn setup(
     time: Res<Time>
 ) {
     // Spwan MemoryTree
-    // interactionframework::spawn_tree("/".to_string(), Vec3 { x: 0., y: 0., z: 0. }, (1.,0.9,0.5,1.1), &mut commands, &mut meshes,&mut materials);
-    for i in (0..5).step_by(1) {
+    interactionframework::spawn_tree("/".to_string(), Vec3 { x: 0., y: 0., z: 0. }, (1.,0.9,0.5,1.1), &mut commands, &mut meshes,&mut materials);
+    // for i in (0..5).step_by(1) {
 
-        let now = Instant::now();
-        interactionframework::spawn_generator_tree("/".to_string(), Vec3 { x: i as f32 * 1., y: 0., z: 0. }, &mut commands, &mut meshes,&mut materials, true, true, i);
-        let elapsed = now.elapsed();
-        println!("#: {:?} Elapsed: {:?}",i, elapsed);
+    //     let now = Instant::now();
+    //     interactionframework::spawn_generator_tree("/".to_string(), Vec3 { x: i as f32 * 1., y: 0., z: 0. }, &mut commands, &mut meshes,&mut materials, true, true, i);
+    //     let elapsed = now.elapsed();
+    //     println!("#: {:?} Elapsed: {:?}",i, elapsed);
     
-    }    
+    // }    
 
     // Plane
     // commands.spawn(PbrBundle {
@@ -64,12 +81,7 @@ fn setup(
     // Directional Light, Sunlike
     commands.spawn((DirectionalLightBundle {
         directional_light: DirectionalLight {
-                        color: Color::Rgba {
-                        red: 0.7,
-                        green: 0.4,
-                        blue: 0.1,
-                        alpha:0.1,
-            },
+            color: Color::linear_rgba(0.7, 0.4, 0.1, 0.1),
             shadows_enabled: false,
             ..default()
         },

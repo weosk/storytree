@@ -141,7 +141,7 @@ impl Tree {
                 // println!("Id_index: {:?}", id_index);
 
                 // Fill bounds with spheres
-                self.bounds.push(BoundingSphere { center: Vec3::splat(0.), sphere: primitives::Sphere{ radius: 1.0 }});
+                self.bounds.push(BoundingSphere { center: Vec3::splat(0.).into(), sphere: primitives::Sphere{ radius: 1.0 }});
                 id_index += 1;
 
                 // Count siblings grouped by depth
@@ -202,7 +202,7 @@ impl Tree {
 
             // Populate bounds
             self.bounds[cnt].sphere = primitives::Sphere{ radius: branch.transform.scale.y };
-            self.bounds[cnt].center = branch.transform.translation;
+            self.bounds[cnt].center = branch.transform.translation.into();
         }
 
         let space_uvs = vec![[0f32, 0f32]; node_vertices.len()];
