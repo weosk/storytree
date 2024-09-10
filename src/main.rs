@@ -13,20 +13,19 @@ use interactionframework::process_inputs_system;
 mod interactionframework;
 mod generator;
 mod database;
-
-use bevy::diagnostic::FrameTimeDiagnosticsPlugin;
+use bevy_fps_counter::{FpsCounter, FpsCounterPlugin};
 
 fn main() {
     App::new()
         .add_plugins(DefaultPlugins)
-        .insert_resource(ClearColor(Color::rgb(1.0, 1., 1.0))) // Background 2 Darkblu
+        .insert_resource(ClearColor(Color::rgb(1.0, 0.92, 0.0))) // Background 2 Darkblu
         .add_systems(Startup, setup)
         .add_systems(Update, (bevy::window::close_on_esc, process_inputs_system, animate_light_direction))
         // .insert_resource(AmbientLight {color: Color::Rgba {red: 0.95,green: 0.3,blue: 1.0,alpha:1.0,},brightness: 0.5,},)
         // .add_plugins(FrameTimeDiagnosticsPlugin::default())
-        .add_plugins(FrameTimeDiagnosticsPlugin::default())
+        // .add_plugins(FrameTimeDiagnosticsPlugin::default())
 
-  
+        .add_plugins(FpsCounterPlugin)
 
         .run();
 }
@@ -39,18 +38,23 @@ fn setup(
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<StandardMaterial>>,
 
-    time: Res<Time>
+    time: Res<Time>,
+    mut diags_state: ResMut<FpsCounter>
 ) {
+    diags_state.enable();
     // Spwan MemoryTree
-    // interactionframework::spawn_tree("/".to_string(), Vec3 { x: 0., y: 0., z: 0. }, (1.,0.9,0.5,1.1), &mut commands, &mut meshes,&mut materials);
-    for i in (0..5).step_by(1) {
+    let now = Instant::now();
+    interactionframework::spawn_tree("/".to_string(), Vec3 { x: 0., y: 0., z: 0. }, (1.,0.9,0.5,1.1), &mut commands, &mut meshes,&mut materials);
+    let elapsed = now.elapsed();
+    println!("Elapsed: {:?}",elapsed);
 
-        let now = Instant::now();
-        interactionframework::spawn_generator_tree("/".to_string(), Vec3 { x: i as f32 * 1., y: 0., z: 0. }, &mut commands, &mut meshes,&mut materials, true, true, i);
-        let elapsed = now.elapsed();
-        println!("#: {:?} Elapsed: {:?}",i, elapsed);
-    
-    }    
+    // for i in (0..5).step_by(1) {
+
+    //     let now = Instant::now();
+    //     interactionframework::spawn_generator_tree("/".to_string(), Vec3 { x: i as f32 * 1., y: 0., z: 0. }, &mut commands, &mut meshes,&mut materials, true, true, i);
+    //     let elapsed = now.elapsed();
+    //     println!("#: {:?} Elapsed: {:?}",i, elapsed);
+    // }    
 
     // Plane
     // commands.spawn(PbrBundle {

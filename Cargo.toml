@@ -17,6 +17,7 @@ bytemuck = "1.13.1"
 meshtext = "0.3"
 # fps counter, performance measuremens
 iyes_perf_ui = "0.3.0"
+bevy-fps-counter = "0.4.0"
 
 # Enable a small amount of optimization in debug mode
 [profile.dev]

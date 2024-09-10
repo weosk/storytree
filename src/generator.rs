@@ -169,7 +169,7 @@ fn next_branch_transform(path: &str) -> Mat4 {
             let scalf = base.powf(i as f32);
             scale = Vec3::splat(scalf);
         }
-
+        
         // Stack unique word transforms together for full path transform // Normal Way would be L = T * R * S  -> Order is S then R then T, but we use angletravel
         transform *= Mat4::from_rotation_y(rotation.y) * Mat4::from_rotation_x(rotation.x)  *  Mat4::from_translation(translation) * Mat4::from_scale(scale);
     }

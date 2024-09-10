@@ -14,19 +14,15 @@ use crate::generator;
 
 #[derive(Component, Debug, Clone)]
 pub struct Branch {
-    // id: Entity,
-    pub name: String,
-    pub num_of_children: i32,    // only direkt children
-    pub num_of_all_children: i32,// recursivly all
-    pub children: Vec<usize>,
-    pub parent: usize,
-
-    pub transform: Transform,
-    pub depth: usize,
-
-    // position: Transform, // how we got here
-    // lind: String, // holds the information to construct geometric branch
+    pub name:                String,
+    pub num_of_children:     i32,             // Direkt children
+    pub num_of_all_children: i32,             // Recursivly all
+    pub children:            Vec<usize>,      // Indices to children
+    pub parent:              usize,           // Index of parent
+    pub depth:               usize,
+    pub transform:           Transform
 }
+
 impl Branch {
     pub fn new() -> Self {
         Self {
@@ -35,8 +31,8 @@ impl Branch {
             num_of_all_children: 0,
             parent : 0,
             children: Vec::new(),
-            transform: Transform::default(),//Mat4::default(),
             depth : 0,
+            transform: Transform::default()
         }
     }
 }
@@ -44,28 +40,23 @@ impl Branch {
 // Fill entity list of branches through string:cutting like before? /sys/bus -> add to /sys/
 // Number of direct siblings is found in parent -> children
 
-
-
-
 #[derive(Component, Debug, Resource, Clone)]
 pub struct Tree{
-    pub path: String,
-    pub siblings: Vec<i32>,
-    pub branches: Vec<Branch>,
-    // pub entity: Vec<Entity>,
-    pub bounds: Vec<BoundingSphere>,
-    pub hash_map: HashMap<String, usize>
+    pub path:                String,
+    pub siblings:            Vec<i32>,
+    pub branches:            Vec<Branch>,
+    pub path_index_link:     HashMap<String, usize>,
+    pub bounds:              Vec<BoundingSphere>
 }
 
 impl Tree {
     pub fn new() -> Self {
         Self {
-            path : "path".to_string(),
+            path : "no_path_yet".to_string(),
             siblings : Vec::new(),
             branches : Vec::new(),
-            // entity : Vec::new(),
-            bounds : Vec::new(),
-            hash_map: HashMap::new()
+            path_index_link: HashMap::new(),
+            bounds : Vec::new()
         }
     }
     
@@ -73,74 +64,50 @@ impl Tree {
 
         let maxdepth = 30;
         let mut id_index: usize = 0;
-        self.siblings.push(0);
-        
+        self.siblings.push(0); 
+        self.path = path.clone();
+
         for entry in WalkDir::new(path).max_depth(maxdepth).sort_by(|a,b| a.file_name().cmp(b.file_name())).into_iter().filter_map(|e| e.ok()) {
             if entry.file_type().is_dir() {
-
-                // let ast = Branch{ name: entry.path().to_str().unwrap().to_string(), num_of_children: count_directories(entry.path().to_str().unwrap())} ;
                 // Would need windows addition anyway
-                if entry.path().to_str().unwrap().to_string() == "/".to_string() {
-                    self.branches.push( Branch{ 
-                        name: "/".to_string(), 
-                        num_of_children: count_directories("/"), 
-                        num_of_all_children: 0, // initialised to zero, 
-                        children: Vec::new(),
-                        parent: 0, // root is it's  own parent
-                        transform: Transform::default(),
-                        depth: entry.depth(),
-                        }
-                        );
-                    self.hash_map.insert("/".to_string(), id_index);
-                    // id_index = 1;
-                }
-                else {
-                    self.branches.push( Branch{ 
-                                        name: entry.path().to_str().unwrap().to_string(), 
-                                        num_of_children: count_directories(entry.path().to_str().unwrap()), 
-                                        num_of_all_children: 0, // initialised to zero, 
-                                        children: Vec::new(),
-                                        parent: 0,
-                                        transform: Transform::default(),//Mat4::default(),
-                                        depth: entry.depth(),
-                                        }
-                        );
-                    self.hash_map.insert(entry.path().to_str().unwrap().to_string(), id_index);
-                }
-                // if id_index < 10 {
-                //     info!("\nId_index: {:?} \nHashmap: {:?} \nBranches: {:?}",id_index, self.hash_map, self.branches);
+                // if entry.path().to_str().unwrap().to_string() == "/".to_string() {
+                //     self.branches.push( Branch{ 
+                //         name: "/".to_string(), 
+                //         num_of_children: count_directories("/"), 
+                //         num_of_all_children: 0, // initialised to zero, 
+                //         children: Vec::new(),
+                //         parent: 0,              // root is it's  own parent
+                //         transform: Transform::default(),
+                //         depth: entry.depth(),
+                //         }
+                //         );
+                //     self.path_index_link.insert("/".to_string(), id_index);
                 // }
+                self.branches.push( Branch{ 
+                                    name: entry.path().to_str().unwrap().to_string(), 
+                                    num_of_children: count_directories(entry.path().to_str().unwrap()), 
+                                    num_of_all_children: 0,          
+                                    children: Vec::new(),
+                                    parent: 0,
+                                    transform: Transform::default(),
+                                    depth: entry.depth(),
+                                    }
+                    );
+                self.path_index_link.insert(entry.path().to_str().unwrap().to_string(), id_index);
+
                 // Get parent from branch vector over the index extracted from the hash map by shortening the path string by one directory
                 if id_index > 0 {
-                    match self.hash_map.get(&get_parent_path(&entry.path().to_str().unwrap().to_string())) {
-                        None => println!("No Parent! Path: {:?}, GivenPath: {:?}", &get_parent_path(&entry.path().to_str().unwrap().to_string()),&entry.path().to_str().unwrap().to_string()),
+                    match self.path_index_link.get(&get_parent_path(&entry.path().to_str().unwrap().to_string())) {
+                        None => println!("No Parent! Path: {:?}, GivenPath: {:?}", &get_parent_path(&entry.path().to_str().unwrap().to_string()),
+                                                                                   &entry.path().to_str().unwrap().to_string()),
                         Some(index) => {
-                            // println!("Parentpath: {:?}, Name: {:?}", index, &entry.path().to_str().unwrap().to_string());
                             self.branches.get_mut(*index).unwrap().children.push(id_index);
-
-                            // Assign parent to child
-                            // info!("Branch: {:?}",self.branches.last());
-                            // info!("index: {:?}",id_index);
-                            // info!("parentindex: {:?}",*index);
-
-                            // if *index == id_index{
-                            //     panic!("Panik!");
-                            // }
-
                             self.branches.last_mut().unwrap().parent = *index;
-
-                            // if *index == 0 {
-                            //     info!("\nIIIndex: {:?} \nIndexParent: {:?} \nChildren: {:?}",0, self.branches[0].parent, self.branches[0].children);
-                            //     info!("Path: {:?} Entry: {:?} \nParentpath: {:?}", *&entry.path().to_str().unwrap().to_string(), entry, &get_parent_path(&entry.path().to_str().unwrap().to_string()));
-                            //     println!("HashValues: {:?}", self.hash_map.get(&get_parent_path(&entry.path().to_str().unwrap().to_string())));
-                            // }
                         }
                     }
                 }
 
-                // println!("Id_index: {:?}", id_index);
-
-                // Fill bounds with spheres
+                // Add a bounding sphere for every branch, size and center will be updated later 
                 self.bounds.push(BoundingSphere { center: Vec3::splat(0.), sphere: primitives::Sphere{ radius: 1.0 }});
                 id_index += 1;
 
@@ -155,6 +122,55 @@ impl Tree {
         }
     }
 
+
+    // pub fn construct(&mut self, path: String) { 
+
+    //     let maxdepth = 30;
+    //     let mut id_index: usize = 0;
+    //     self.siblings.push(0); 
+    //     self.path = path.clone();
+    //     for entry in WalkDir::new(path).max_depth(maxdepth).sort_by(|a,b| a.file_name().cmp(b.file_name()))
+    //                                                     .into_iter().filter_map(|e| e.ok()) {
+    //         if entry.file_type().is_dir() {
+    //             self.branches.push( Branch{ 
+    //                                 name: entry.path().to_str().unwrap().to_string(), 
+    //                                 num_of_children: count_directories(entry.path().to_str().unwrap()), 
+    //                                 num_of_all_children: 0,          
+    //                                 children: Vec::new(),
+    //                                 parent: 0,
+    //                                 transform: Transform::default(),
+    //                                 depth: entry.depth(),
+    //                                 }
+    //                 );
+    //             self.path_index_link.insert(entry.path().to_str().unwrap().to_string(), id_index);
+
+    //             // Get parent from branch vector over the index extracted from the hash map by shortening the path string by one directory
+    //             if id_index > 0 {
+    //                 match self.path_index_link.get(&get_parent_path(&entry.path().to_str().unwrap().to_string())) {
+    //                     None => println!("No Parent! Path: {:?}, GivenPath: {:?}", &get_parent_path(&entry.path().to_str().unwrap().to_string()),
+    //                                                                                &entry.path().to_str().unwrap().to_string()),
+    //                     Some(index) => {
+    //                         self.branches.get_mut(*index).unwrap().children.push(id_index);
+    //                         self.branches.last_mut().unwrap().parent = *index;
+    //                     }
+    //                 }
+    //             }
+
+    //             // Add a bounding sphere for every branch, size and center will be updated later 
+    //             self.bounds.push(BoundingSphere { center: Vec3::splat(0.), sphere: primitives::Sphere{ radius: 1.0 }});
+    //             id_index += 1;
+
+    //             // Count siblings grouped by depth
+    //             if self.siblings.len() <= entry.depth() {
+    //                 self.siblings.push(1);
+    //             } 
+    //             else {
+    //                 *self.siblings.get_mut(entry.depth()).unwrap() += 1;
+    //             }
+    //         }
+    //     }
+    // }
+
     // Wrapper method for the recursive dive to provide the mesh
     pub fn grow(&mut self, name: &mut str, param_set: (f32,f32,f32,f32)) -> Mesh {
 
@@ -164,7 +180,7 @@ impl Tree {
         // info!("Root Children1:{:?}",self.branches[0].children);
 
         // dive to count all the subfolders
-        info!("All Subfolders: {:?}",dive_to_count(0, &mut self.branches)); 
+        info!("All Subfolders: {:?} Num of root children: {:?}",dive_to_count(0, &mut self.branches), self.branches[0].num_of_children); 
 
         // dive to sort
         dive_to_sort(0,&mut self.branches);
@@ -172,7 +188,6 @@ impl Tree {
         // dive to construct
         // dive(name,0, &mut self.branches, &mut line_vertices);
         param_dive(name,0, &mut self.branches, &mut line_vertices,  param_set);
-
 
 //         for i in 0..5 {
 //             info!("i: {:?} Children: {:?}",i ,self.branches[i].children);
@@ -222,12 +237,9 @@ impl Tree {
 
 // Returns number of subfolder count
 fn dive_to_count(index: usize, branches: &mut Vec<Branch>) -> i32 { 
-    // info!("IndexCount: {:?}", index);
     if branches.len() > index {
         for child_index in branches[index].children.clone() {
             if branches.len() > child_index {
-                // info!("IndexCount: {:?}, ChildIndex: {:?}, Children: {:?}", index, child_index, branches[index].children);
-                
                 branches[index].num_of_all_children += dive_to_count(child_index, branches);
             }
         }
@@ -245,25 +257,14 @@ fn dive_to_sort(index: usize, branches: &mut Vec<Branch>) {
 
         for i in 0..branches[index].children.len() {
             if branches[index].children[i] < branches.len() {
-
-                if index < 3 {
-                    // info!("--- Index: {:?} : {:?}", index, branches[branches[index].children[i]].num_of_all_children)
-                }
                 sort_vec.push((branches[index].children[i], branches[branches[index].children[i]].num_of_all_children)); // Child indizes der Reihe nach
             }
             else {
-                error!("Descendantindex out of bounds!");
+                error!("Descendantindex out of bounds in dive_to_sort!");
             }
         }
-        // if index < 2 {
-        //     info!("SortVec: {:?} \n", sort_vec);
-        // }
         if sort_vec.len() > 0 {
-            // info!("1 SortVec: {:?}",sort_vec);
             sort_vec.sort_by_key(|k| k.1);
-            // Standart is highest value on last position
-            // sort_vec.reverse();
-
             for i in 0..sort_vec.len() {
                 branches[index].children[i] = sort_vec[i].0;
             }
@@ -277,116 +278,116 @@ fn dive_to_sort(index: usize, branches: &mut Vec<Branch>) {
 }
 
 
-    fn param_dive(name:&mut str, index: usize, branches: &mut Vec<Branch>, line_vertices: &mut Vec<Vec3>,param_set: (f32,f32,f32,f32)) -> () {
-        if branches.len() > index {
+fn param_dive(name:&mut str, index: usize, branches: &mut Vec<Branch>, line_vertices: &mut Vec<Vec3>,param_set: (f32,f32,f32,f32)) -> () {
+    if branches.len() > index {
+        
+        let mut extending_factor = 40;//0 - branches[index].depth as i32 * 10; //40;//20;//branches[index].children;//20;
+        let children = branches[index].children.clone();
+        let mut inner_child_index: usize = 0;
+
+        let transform = branches[index].transform;
+        let mut pos = transform.translation;
+        let mut last_pos = pos;
+
+        let mut spiral_pos = Vec3::splat(0.);
+        // let mut spiral_pos = vec3(2000., 0., 0.);
+
+        let mut spiral_transform = Transform::default();
+
+        let scale = param_set.0 * param_set.1.powf(branches[index].depth as f32);
+        
+        if index == 0 {
+            branches[index].transform.scale = Vec3::splat(scale);
+            extending_factor = 100;
+        }
+
+        let vertex_iteration = (branches[index].children.len() as i32 * extending_factor) - 0;
+
+        for i in 0..vertex_iteration { // Number of vertices of branch
+
+            // spiral_transform.translation.x =scale*0.001*i as f32 * (i as f32 * PI/16.).cos() + scale* 10.*(1.-1.*E.powf(-0.0001*i as f32)) * 1.*(1./64.*i as f32 * PI/16.).cos();
+            // spiral_transform.translation.y =scale* 0.5;//0.5;//0.2;
+            // spiral_transform.translation.z =scale*0.001*i as f32 * (i as f32 * PI/16.).sin() + scale* 10.*(1.-1.*E.powf(-0.0001*i as f32)) * 1.*(1./64.*i as f32 * PI/16.).sin();
+
             
-            let mut extending_factor = 40;//0 - branches[index].depth as i32 * 10; //40;//20;//branches[index].children;//20;
-            let children = branches[index].children.clone();
-            let mut inner_child_index: usize = 0;
-    
-            let transform = branches[index].transform;
-            let mut pos = transform.translation;
-            let mut last_pos = pos;
-    
-            let mut spiral_pos = Vec3::splat(0.);
-            // let mut spiral_pos = vec3(2000., 0., 0.);
-    
-            let mut spiral_transform = Transform::default();
-    
-            let scale = param_set.0 * param_set.1.powf(branches[index].depth as f32);
+            // spiral_transform.translation.x = scale * (param_set.2 * (i as f32 * PI/16. * param_set.3).cos() + param_set.0 * i as f32);// + scale* 10.*(1.-1.*E.powf(-0.0001*i as f32)) * 1.*(1./64.*i as f32 * PI/16.).cos();
+            // spiral_transform.translation.y = scale * param_set.2 * i as f32 *  0.3;//param_set.0 + scale* 1.;
+            // spiral_transform.translation.z = scale * (param_set.2 * (i as f32 * PI/16. * param_set.3).sin() + param_set.0 * i as f32);// + scale* 10.*(1.-1.*E.powf(-0.0001*i as f32)) * 1.*(1./64.*i as f32 * PI/16.).sin();
+
+
+            // todo find all the things!
+            spiral_transform.translation.x =scale* ( 0.001*i as f32 * (i as f32 * PI/16.).cos()  + scale* 10.*(1.-1.*E.powf(-0.0001*i as f32)) * 1.*(1./64.*i as f32 * PI/27.).cos());
+            spiral_transform.translation.y =0.01 + branches[index].depth as f32 * 0.1 * scale;  //(branches[index].depth as f32 *0.01);// + 0.1 * i as f32) * scale;//param_set.3*scale* 1.;//0.5;//0.2;
+            spiral_transform.translation.z =scale* ( 0.001*i as f32 * (i as f32 * PI/16.).sin() + scale* 10.*(1.-1.*E.powf(-0.0001*i as f32)) * 1.*(1./64.*i as f32 * PI/99.).sin());
             
-            if index == 0 {
-                branches[index].transform.scale = Vec3::splat(scale);
-                extending_factor = 1000;
-            }
-
-            let vertex_iteration = (branches[index].children.len() as i32 * extending_factor) - 0;
-
-            for i in 0..vertex_iteration { // Number of vertices of branch
-
-                // spiral_transform.translation.x =scale*0.001*i as f32 * (i as f32 * PI/16.).cos() + scale* 10.*(1.-1.*E.powf(-0.0001*i as f32)) * 1.*(1./64.*i as f32 * PI/16.).cos();
-                // spiral_transform.translation.y =scale* 0.5;//0.5;//0.2;
-                // spiral_transform.translation.z =scale*0.001*i as f32 * (i as f32 * PI/16.).sin() + scale* 10.*(1.-1.*E.powf(-0.0001*i as f32)) * 1.*(1./64.*i as f32 * PI/16.).sin();
-
-                
-                // spiral_transform.translation.x = scale * (param_set.2 * (i as f32 * PI/16. * param_set.3).cos() + param_set.0 * i as f32);// + scale* 10.*(1.-1.*E.powf(-0.0001*i as f32)) * 1.*(1./64.*i as f32 * PI/16.).cos();
-                // spiral_transform.translation.y = scale * param_set.2 * i as f32 *  0.3;//param_set.0 + scale* 1.;
-                // spiral_transform.translation.z = scale * (param_set.2 * (i as f32 * PI/16. * param_set.3).sin() + param_set.0 * i as f32);// + scale* 10.*(1.-1.*E.powf(-0.0001*i as f32)) * 1.*(1./64.*i as f32 * PI/16.).sin();
+            //27 zu 216 hinten modern art
+            
+            // Spiral Backup
+            // spiral_transform.translation.x =scale* ( 0.001*i as f32 * (i as f32 * PI/16.).cos() + scale* 10.*(1.-1.*E.powf(-0.0001*i as f32)) * 1.*(1./64.*i as f32 * PI/16.).cos());
+            // spiral_transform.translation.y =scale * 1.;//param_set.3*scale* 1.;//0.5;//0.2;
+            // spiral_transform.translation.z =scale* ( 0.001*i as f32 * (i as f32 * PI/16.).sin() + scale* 10.*(1.-1.*E.powf(-0.0001*i as f32)) * 1.*(1./64.*i as f32 * PI/16.).sin());
+        
+            // Spiraling Up
+            spiral_pos = spiral_transform.transform_point(spiral_pos);
+            // Rotate into formerly given direction
+            pos = Transform::from_rotation(transform.rotation).transform_point(spiral_pos);
+            // Translate to formerly given position
+            pos = Transform::from_translation(transform.translation).transform_point(pos);
 
 
-                // todo find all the things!
-                spiral_transform.translation.x =scale* ( 0.001*i as f32 * (i as f32 * PI/16.).cos()  + scale* 10.*(1.-1.*E.powf(-0.0001*i as f32)) * 1.*(1./64.*i as f32 * PI/27.).cos());
-                spiral_transform.translation.y =0.01 + branches[index].depth as f32 * 0.1 * scale;  //(branches[index].depth as f32 *0.01);// + 0.1 * i as f32) * scale;//param_set.3*scale* 1.;//0.5;//0.2;
-                spiral_transform.translation.z =scale* ( 0.001*i as f32 * (i as f32 * PI/16.).sin() + scale* 10.*(1.-1.*E.powf(-0.0001*i as f32)) * 1.*(1./64.*i as f32 * PI/99.).sin());
-                
-                //27 zu 216 hinten modern art
-                
-                // Spiral Backup
-                // spiral_transform.translation.x =scale* ( 0.001*i as f32 * (i as f32 * PI/16.).cos() + scale* 10.*(1.-1.*E.powf(-0.0001*i as f32)) * 1.*(1./64.*i as f32 * PI/16.).cos());
-                // spiral_transform.translation.y =scale * 1.;//param_set.3*scale* 1.;//0.5;//0.2;
-                // spiral_transform.translation.z =scale* ( 0.001*i as f32 * (i as f32 * PI/16.).sin() + scale* 10.*(1.-1.*E.powf(-0.0001*i as f32)) * 1.*(1./64.*i as f32 * PI/16.).sin());
-           
-                // Spiraling Up
-                spiral_pos = spiral_transform.transform_point(spiral_pos);
-                // Rotate into formerly given direction
-                pos = Transform::from_rotation(transform.rotation).transform_point(spiral_pos);
-                // Translate to formerly given position
-                pos = Transform::from_translation(transform.translation).transform_point(pos);
+            if i % extending_factor == extending_factor - 1 {
+                if branches.len() > children[inner_child_index] { // To prevent len == index for /
+                    let dir = pos - last_pos;
+                    
+                    let mut rts = spiral_transform;
 
+                    if children[inner_child_index] == *children.last().unwrap() {
+                        rts = rts.with_rotation(branches[branches[index].parent].transform.rotation);
+                        rts = rts.with_translation(pos);
+                        rts = rts.with_scale(Vec3::splat(scale));
 
-                if i % extending_factor == extending_factor - 1 {
-                    if branches.len() > children[inner_child_index] { // To prevent len == index for /
-                        let dir = pos - last_pos;
-                        
-                        let mut rts = spiral_transform;
-
-                        if children[inner_child_index] == *children.last().unwrap() {
-                            rts = rts.with_rotation(branches[branches[index].parent].transform.rotation);
-                            rts = rts.with_translation(pos);
-                            rts = rts.with_scale(Vec3::splat(scale));
-
-                        }
-                        else {
-                            // rts.look_to(  pos.normalize().any_orthogonal_vector(), pos.normalize());// * Vec3 {x: 1., y: 0., z: 1. });
-                            // rts.look_to(  dir.normalize(), Vec3 {x: 0., y: 1., z: 0. } + pos.normalize());// * Vec3 {x: 1., y: 0., z: 1. });
-                            // rts.look_to(  dir.normalize().any_orthonormal_vector(), dir.normalize() + Vec3 {x: 0., y: 1., z: 0. } );// Vec3 {x: 0., y: 1., z: 0. });// * Vec3 {x: 1., y: 0., z: 1. });
-                            rts.look_to(  dir.normalize(), Vec3 {x: 0., y: 1., z: 0. } );// * Vec3 {x: 1., y: 0., z: 1. });
-
-                            rts = rts.with_translation(pos);
-                            rts = rts.with_scale(Vec3::splat(scale));
-                        }    
-                        branches[children[inner_child_index]].transform = rts;
-                        inner_child_index += 1;
                     }
+                    else {
+                        // rts.look_to(  pos.normalize().any_orthogonal_vector(), pos.normalize());// * Vec3 {x: 1., y: 0., z: 1. });
+                        // rts.look_to(  dir.normalize(), Vec3 {x: 0., y: 1., z: 0. } + pos.normalize());// * Vec3 {x: 1., y: 0., z: 1. });
+                        // rts.look_to(  dir.normalize().any_orthonormal_vector(), dir.normalize() + Vec3 {x: 0., y: 1., z: 0. } );// Vec3 {x: 0., y: 1., z: 0. });// * Vec3 {x: 1., y: 0., z: 1. });
+                        rts.look_to(  dir.normalize(), Vec3 {x: 0., y: 1., z: 0. } );// * Vec3 {x: 1., y: 0., z: 1. });
+
+                        rts = rts.with_translation(pos);
+                        rts = rts.with_scale(Vec3::splat(scale));
+                    }    
+                    branches[children[inner_child_index]].transform = rts;
+                    inner_child_index += 1;
                 }
-                    line_vertices.push(last_pos);
-                    line_vertices.push(pos);
-                    last_pos = pos;
             }
+                line_vertices.push(last_pos);
+                line_vertices.push(pos);
+                last_pos = pos;
+        }
 
-            // param_set.0 -= 0.1;
-            // param_set.2 += 0.1;
+        // param_set.0 -= 0.1;
+        // param_set.2 += 0.1;
 
-            for child_index in branches[index].children.clone() {
-                if !(branches.len() < child_index) {
-                    param_dive(name, child_index, branches, line_vertices, param_set);
-                }
+        for child_index in branches[index].children.clone() {
+            if !(branches.len() < child_index) {
+                param_dive(name, child_index, branches, line_vertices, param_set);
             }
         }
     }
+}
 
-    fn get_parent_path(path: &str) -> String{
-        let parent_string: String = match path.rsplit_once("/") {
-            Some(cut_path) => {
-                if cut_path.0.to_string() == "".to_string(){
-                                                "/".to_string()}
-                                                else{
-                                                cut_path.0.to_string()}
-                                                }
-            None    => "/".to_string(),
-        };
-        parent_string
-    }
+fn get_parent_path(path: &str) -> String{
+    let parent_string: String = match path.rsplit_once("/") {
+        Some(cut_path) => {
+            if cut_path.0.to_string() == "".to_string(){
+                                            "/".to_string()}
+                                            else{
+                                            cut_path.0.to_string()}
+                                            }
+        None    => "/".to_string(),
+    };
+    parent_string
+}
 
 pub fn _calc_rotation_matrix(a: Vec3, b: Vec3) -> Mat3 {
 
@@ -446,18 +447,17 @@ pub fn count_directories(path: &str) -> i32
         if entry.file_type().is_dir() {
             cnt += 1; 
         }}
-        // println!("Count: {:?}",cnt);
-         cnt 
+        cnt 
 }
 
 
 
+
+
+
 ///
-/// Old Dive: 
+/// Old Dive and experiments: 
 /// 
-
-
-
 
 // Standart swirl
 // spiral_transform.rotate_y(PI/128.);

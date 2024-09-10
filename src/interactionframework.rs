@@ -511,11 +511,11 @@ pub fn spawn_tree (
 
         let (text_mesh, space_mesh, line_mesh) = generator::walk_path_to_mesh(path.as_ref(), GenerationType::Branch, depth, textflag, dodecaflag);
 
-            text_mesh.count_vertices();
+        let mem_text = text_mesh.count_vertices()   ;//* 3 * core::mem::size_of::<f32>();
+        let mem_space = space_mesh.count_vertices() ;//* 3 * core::mem::size_of::<f32>();
+        let mem_line = line_mesh.count_vertices()   ;//* 3 * core::mem::size_of::<f32>();
 
-        info!(">SizeofTextMesh: {:?} bytes",text_mesh.count_vertices() * 3 * core::mem::size_of::<f32>());
-        info!(">SizeofSpacMesh: {:?} bytes",space_mesh.count_vertices()* 3 * core::mem::size_of::<f32>());
-        info!(">SizeofLineMesh: {:?} bytes",line_mesh.count_vertices()* 3 * core::mem::size_of::<f32>());
+        info!(">Count, total nodes, line, space, text,Size total:{:?} {:?} {:?} {:?} {:?} mega bytes", mem_space/20,  mem_line, mem_space, mem_text, ((mem_text+mem_space+mem_line) as f32 * 3. * core::mem::size_of::<f32>() as f32)/1024.);
 
         commands.spawn((PbrBundle {
             mesh: meshes.add(line_mesh),
