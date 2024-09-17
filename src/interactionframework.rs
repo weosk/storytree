@@ -223,7 +223,7 @@ pub fn process_inputs_system(
 
                     if let Some(tree_data) = &mut tree_data {
 
-                        let ray_cast = RayCast3d::from_ray(cam_ray, 10000.);
+                        let ray_cast = RayCast3d::from_ray(cam_ray, 1000000.);
 
                         for (i, branch, ) in tree_data.bounds.clone().into_iter().enumerate(){
                             let cast_result = ray_cast.intersects(&branch);//BoundingSphereCast::from_ray(branch, world_position, 10000.);
@@ -273,10 +273,16 @@ pub fn process_inputs_system(
                                     println!(": {:?} :", entry.path());
                                     if entry.file_type().is_file() || entry.file_type().is_symlink() {
                                         if let Some((mut text,mut text_transform)) = q_screen_text.next(){
-                                            text_transform.translation.x = -200.;
-                                            text_transform.translation.y = 200. - 10.* cnt;
-                                            text.sections[0].value = entry.file_name().to_str().unwrap().to_string();
-                                            cnt += 2.;
+                                            text_transform.translation.x = -window.width()*0.5 + 50.;
+                                            text_transform.translation.y = window.height()*0.5  - 50. - 10.* cnt;
+                                            if (cnt == 0.){
+                                                text.sections[0].value = entry.path().to_str().unwrap().to_string();
+                                                cnt += 4.;
+                                            }
+                                            else {
+                                                text.sections[0].value = entry.file_name().to_str().unwrap().to_string();
+                                                cnt += 2.;
+                                            }
                                         }
                                     }
                                     else {
@@ -290,19 +296,21 @@ pub fn process_inputs_system(
                             }
                         }
                         println!("LeftMouseButton release bounds loop finished: Iterating files \n");
+                        // https://bevy-cheatbook.github.io/programming/commands.html for despawning and spawning file representatives
+
                     }
                 }
            // }
     }
 
-    // Cam teleport to right click, somehow kills later klick detection TODO
+    // Cam teleport to right click
     if buttons.just_released(MouseButton::Right) {
 
         if let Some(cam_ray) = window.cursor_position().and_then(|cursor| camera.viewport_to_world(camera_transform, cursor)){
 
             if let Some(tree_data) = &mut tree_data {
 
-                let ray_cast = RayCast3d::from_ray(cam_ray, 10000.);
+                let ray_cast = RayCast3d::from_ray(cam_ray, 4000.);
 
                 for (_i, branch, ) in tree_data.bounds.clone().into_iter().enumerate(){
                     let cast_result = ray_cast.intersects(&branch);//BoundingSphereCast::from_ray(branch, world_position, 10000.);
@@ -314,7 +322,7 @@ pub fn process_inputs_system(
                         cam.pos = cam_transform.translation;
 
                         // Teleport camera to clicked place
-                        info!("Teleporting camera, Cameratransform: {:?}", cam.pos);
+                        info!("Teleporting camera, Cameratransform: {:?}", cam.pos); 
                     }
                 }
             }
@@ -330,7 +338,7 @@ pub fn process_inputs_system(
         let bound_sphere = BoundingSphere::new(
             camera_transform.transform_point(
                 camera_transform.to_scale_rotation_translation().1
-                .mul_vec3(Vec3 { x: 1., y: 1., z: 1. })), 1000.0);
+                .mul_vec3(Vec3 { x: 1., y: 1., z: 1. })), 10000.0);
         
                                 // Name, Distance, Screenpos
         let mut detected_nodes: Vec<(String, i32, Vec3)> = vec![];
@@ -462,15 +470,14 @@ pub fn spawn_tree (
 ) {
     let mut main_tree = database::Tree::new();
 
-    main_tree.construct(path); // No end "/" allowed
+    // main_tree.construct(path.clone()); 
     // main_tree.construct("./TestTree/Tree".to_string()); // No end "/" allowed
     
-    let mut tree_name: String = "000".to_string();
-    commands.spawn((PbrBundle {
-        mesh: meshes.add(main_tree.grow(&mut tree_name, param_set)
+    commands.spawn((PbrBundle { // Linemesh
+        mesh: meshes.add(main_tree.construct(path.clone())//grow(&mut tree_name, param_set)
     ),
         material: materials.add(
-            Color::rgba(0., 0., 1., 1.0),
+            Color::rgb_linear(10., 0., 0.)//rgb(1., 1., 1.),
         ),
         transform: Transform::from_translation(pos),
         ..Default::default()
@@ -485,7 +492,13 @@ pub fn spawn_tree (
         mesh: meshes.add(main_tree.mesh_nodes()
     ),
         material: materials.add(
-            Color::rgba(0.74, 0.3, 0.1, 1.0),
+            // Color::rgba(0.74, 0.3, 0.1, 1.0),
+            // Color::rgb_linear(10., 3.5, 0.5)//rgb(1., 1., 1.),
+            // Color::RgbaLinear { red: 80., green: 40., blue: 38., alpha: 0.79 }
+            Color::Rgba { red: 0.3, green: 0.2, blue: 0.3, alpha: 0.79 }
+
+            // Color::rgba(0.74, 0.3, 0.1, 1.0),
+            // Color::rgba(0., 0., 0., 1.0),
         ),
         transform: Transform::from_translation(pos),
         ..Default::default()

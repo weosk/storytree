@@ -18,14 +18,11 @@ use bevy_fps_counter::{FpsCounter, FpsCounterPlugin};
 fn main() {
     App::new()
         .add_plugins(DefaultPlugins)
-        .insert_resource(ClearColor(Color::rgb(1.0, 0.92, 0.0))) // Background 2 Darkblu
+        .insert_resource(ClearColor(Color::rgb(1.0, 1., 1.0))) // Backround Colour
         .add_systems(Startup, setup)
         .add_systems(Update, (bevy::window::close_on_esc, process_inputs_system, animate_light_direction))
-        // .insert_resource(AmbientLight {color: Color::Rgba {red: 0.95,green: 0.3,blue: 1.0,alpha:1.0,},brightness: 0.5,},)
-        // .add_plugins(FrameTimeDiagnosticsPlugin::default())
-        // .add_plugins(FrameTimeDiagnosticsPlugin::default())
-
         .add_plugins(FpsCounterPlugin)
+        // .insert_resource(AmbientLight {color: Color::Rgba {red: 0.0,green: 0.0,blue: 1.0,alpha:0.5,},brightness: 1.,},)
 
         .run();
 }
@@ -51,7 +48,7 @@ fn setup(
     // for i in (0..5).step_by(1) {
 
     //     let now = Instant::now();
-    //     interactionframework::spawn_generator_tree("/".to_string(), Vec3 { x: i as f32 * 1., y: 0., z: 0. }, &mut commands, &mut meshes,&mut materials, true, true, i);
+        // interactionframework::spawn_generator_tree("/".to_string(), Vec3 { x: 1., y: 0., z: 0. }, &mut commands, &mut meshes,&mut materials, true, true, 4);
     //     let elapsed = now.elapsed();
     //     println!("#: {:?} Elapsed: {:?}",i, elapsed);
     // }    
@@ -66,23 +63,23 @@ fn setup(
     // });
 
     // Directional Light, Sunlike
-    commands.spawn((DirectionalLightBundle {
-        directional_light: DirectionalLight {
-                        color: Color::Rgba {
-                        red: 0.7,
-                        green: 0.4,
-                        blue: 0.1,
-                        alpha:0.1,
-            },
-            shadows_enabled: false,
-            ..default()
-        },
-        transform: Transform::from_rotation(Quat::from_rotation_x(-PI/2.)),
-        // transform: Transform::from_xyz(0.,-200.,0.)*Transform::from_rotation(Quat::from_rotation_x(PI/2.)),
-        ..default()
-    },
-    // RenderLayers::all(),)
-    ));
+    // commands.spawn((DirectionalLightBundle {
+    //     directional_light: DirectionalLight {
+    //                     color: Color::Rgba {
+    //                     red: 0.7,
+    //                     green: 0.4,
+    //                     blue: 0.1,
+    //                     alpha:0.1,
+    //         },
+    //         shadows_enabled: false,
+    //         ..default()
+    //     },
+    //     transform: Transform::from_rotation(Quat::from_rotation_x(-PI/2.)),
+    //     // transform: Transform::from_xyz(0.,-200.,0.)*Transform::from_rotation(Quat::from_rotation_x(PI/2.)),
+    //     ..default()
+    // },
+    // // RenderLayers::all(),)
+    // ));
 
     // Perspective cam
     commands.spawn((Camera3dBundle {

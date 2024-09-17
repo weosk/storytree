@@ -60,7 +60,7 @@ impl Tree {
         }
     }
     
-    pub fn construct(&mut self, path: String) { 
+    pub fn construct(&mut self, path: String) -> Mesh { 
 
         let maxdepth = 30;
         let mut id_index: usize = 0;
@@ -69,20 +69,6 @@ impl Tree {
 
         for entry in WalkDir::new(path).max_depth(maxdepth).sort_by(|a,b| a.file_name().cmp(b.file_name())).into_iter().filter_map(|e| e.ok()) {
             if entry.file_type().is_dir() {
-                // Would need windows addition anyway
-                // if entry.path().to_str().unwrap().to_string() == "/".to_string() {
-                //     self.branches.push( Branch{ 
-                //         name: "/".to_string(), 
-                //         num_of_children: count_directories("/"), 
-                //         num_of_all_children: 0, // initialised to zero, 
-                //         children: Vec::new(),
-                //         parent: 0,              // root is it's  own parent
-                //         transform: Transform::default(),
-                //         depth: entry.depth(),
-                //         }
-                //         );
-                //     self.path_index_link.insert("/".to_string(), id_index);
-                // }
                 self.branches.push( Branch{ 
                                     name: entry.path().to_str().unwrap().to_string(), 
                                     num_of_children: count_directories(entry.path().to_str().unwrap()), 
@@ -120,6 +106,15 @@ impl Tree {
                 }
             }
         }
+
+        dive_to_count(0, &mut self.branches);
+        dive_to_sort (0, &mut self.branches);
+        let mut line_mesh : Mesh = Mesh::new(PrimitiveTopology::LineList, RenderAssetUsages::default());
+        let mut line_vertices: Vec<Vec3> = vec![];
+        dive_to_transform(0, &mut self.branches, &mut line_vertices);
+        line_mesh.insert_attribute(Mesh::ATTRIBUTE_POSITION, line_vertices);
+        line_mesh
+
     }
 
 
@@ -177,27 +172,14 @@ impl Tree {
         let mut line_mesh : Mesh = Mesh::new(PrimitiveTopology::LineList, RenderAssetUsages::default());
         let mut line_vertices: Vec<Vec3> = vec![];
 
-        // info!("Root Children1:{:?}",self.branches[0].children);
-
         // dive to count all the subfolders
         info!("All Subfolders: {:?} Num of root children: {:?}",dive_to_count(0, &mut self.branches), self.branches[0].num_of_children); 
 
         // dive to sort
-        dive_to_sort(0,&mut self.branches);
+        dive_to_sort(0,&mut self.branches); 
 
         // dive to construct
-        // dive(name,0, &mut self.branches, &mut line_vertices);
-        param_dive(name,0, &mut self.branches, &mut line_vertices,  param_set);
-
-//         for i in 0..5 {
-//             info!("i: {:?} Children: {:?}",i ,self.branches[i].children);
-//             info!("i: {:?} Parent: {:?}",i ,self.branches[i].parent);
-//             info!("i: {:?} NumOfChildren: {:?}",i ,self.branches[i].num_of_children);
-//             info!("i: {:?} NumOfAllChildren: {:?} : {:?}",i ,self.branches[i].num_of_all_children, self.branches[i].transform);
-//             info!("Transform0: {:?}",self.branches[i].transform);
-//         }
-
-        // info!("Number of branches: {}", self.branches.len());
+        dive_to_transform(0, &mut self.branches, &mut line_vertices);
 
         line_mesh.insert_attribute(Mesh::ATTRIBUTE_POSITION, line_vertices);
         line_mesh
@@ -235,7 +217,7 @@ impl Tree {
     // println!("Transform: {:?}", branch.transform);
 }
 
-// Returns number of subfolder count
+// Returns number of descendants count
 fn dive_to_count(index: usize, branches: &mut Vec<Branch>) -> i32 { 
     if branches.len() > index {
         for child_index in branches[index].children.clone() {
@@ -245,11 +227,11 @@ fn dive_to_count(index: usize, branches: &mut Vec<Branch>) -> i32 {
         }
         return branches[index].num_of_all_children +1;
     }
-    error!("branches.len() > index: {:?} ... {:?}",branches.len(),index);
+    error!("Dive_to_count: Index out of bounds {:?} ... {:?}",branches.len(),index);
     return 0;
 }
 
-// Sorts children
+// Sorts branches by their number of descendants
 fn dive_to_sort(index: usize, branches: &mut Vec<Branch>) { 
 
     if branches.len() > index && branches[index].children.len() != 0 {
@@ -257,36 +239,34 @@ fn dive_to_sort(index: usize, branches: &mut Vec<Branch>) {
 
         for i in 0..branches[index].children.len() {
             if branches[index].children[i] < branches.len() {
-                sort_vec.push((branches[index].children[i], branches[branches[index].children[i]].num_of_all_children)); // Child indizes der Reihe nach
-            }
-            else {
-                error!("Descendantindex out of bounds in dive_to_sort!");
-            }
+                sort_vec.push((branches[index].children[i], 
+                               branches[branches[index].children[i]].num_of_all_children)); 
+            } else {error!("Dive_to_sort: Index out of bounds");}
         }
         if sort_vec.len() > 0 {
             sort_vec.sort_by_key(|k| k.1);
             for i in 0..sort_vec.len() {
                 branches[index].children[i] = sort_vec[i].0;
             }
-        }
+        } else {error!("Dive_to_sort: Sortvec empty");}
         for child_index in branches[index].children.clone() {
             if branches.len() > child_index {
                 dive_to_sort(child_index, branches);
-            }
+            } else {error!("Dive_to_sort: Descendantindex out of bounds");}
         }
     }
 }
 
-
-fn param_dive(name:&mut str, index: usize, branches: &mut Vec<Branch>, line_vertices: &mut Vec<Vec3>,param_set: (f32,f32,f32,f32)) -> () {
+fn dive_to_transform(index: usize, branches: &mut Vec<Branch>, line_vertices: &mut Vec<Vec3>) -> () {
     if branches.len() > index {
         
-        let mut extending_factor = 40;//0 - branches[index].depth as i32 * 10; //40;//20;//branches[index].children;//20;
+        let mut extending_factor = 3;//0 - branches[index].depth as i32 * 10; //40;//20;//branches[index].children;//20;
+        
         let children = branches[index].children.clone();
         let mut inner_child_index: usize = 0;
 
-        let transform = branches[index].transform;
-        let mut pos = transform.translation;
+        let inherited_transform = branches[index].transform;
+        let mut pos = inherited_transform.translation;
         let mut last_pos = pos;
 
         let mut spiral_pos = Vec3::splat(0.);
@@ -294,31 +274,62 @@ fn param_dive(name:&mut str, index: usize, branches: &mut Vec<Branch>, line_vert
 
         let mut spiral_transform = Transform::default();
 
-        let scale = param_set.0 * param_set.1.powf(branches[index].depth as f32);
+        // let scale = param_set.0 * param_set.1.powf(branches[index].depth as f32);
         
-        if index == 0 {
-            branches[index].transform.scale = Vec3::splat(scale);
-            extending_factor = 100;
-        }
+        let scale = 3.2 * 0.9f32.powf(branches[index].depth as f32);
+        // let scale = 3.;
+        // let scale = 3. * (branches[index].num_of_all_children as f32 / branches[0].num_of_all_children as f32);
+//sortis off
+        // if index == 0 {
+        //     branches[index].transform.scale = Vec3::splat(scale);
+        //     extending_factor = 1000;
+        // }
 
-        let vertex_iteration = (branches[index].children.len() as i32 * extending_factor) - 0;
+        let vertex_iteration = (branches[index].children.len() as i32 * extending_factor);
+
+        // let vertex_iteration = (2 as i32 * extending_factor) - 0;
 
         for i in 0..vertex_iteration { // Number of vertices of branch
 
+            // Cloudtubes
             // spiral_transform.translation.x =scale*0.001*i as f32 * (i as f32 * PI/16.).cos() + scale* 10.*(1.-1.*E.powf(-0.0001*i as f32)) * 1.*(1./64.*i as f32 * PI/16.).cos();
             // spiral_transform.translation.y =scale* 0.5;//0.5;//0.2;
             // spiral_transform.translation.z =scale*0.001*i as f32 * (i as f32 * PI/16.).sin() + scale* 10.*(1.-1.*E.powf(-0.0001*i as f32)) * 1.*(1./64.*i as f32 * PI/16.).sin();
 
-            
-            // spiral_transform.translation.x = scale * (param_set.2 * (i as f32 * PI/16. * param_set.3).cos() + param_set.0 * i as f32);// + scale* 10.*(1.-1.*E.powf(-0.0001*i as f32)) * 1.*(1./64.*i as f32 * PI/16.).cos();
-            // spiral_transform.translation.y = scale * param_set.2 * i as f32 *  0.3;//param_set.0 + scale* 1.;
-            // spiral_transform.translation.z = scale * (param_set.2 * (i as f32 * PI/16. * param_set.3).sin() + param_set.0 * i as f32);// + scale* 10.*(1.-1.*E.powf(-0.0001*i as f32)) * 1.*(1./64.*i as f32 * PI/16.).sin();
+            // let fac = (branches[index].num_of_all_children as f32 / branches[0].num_of_all_children as f32).log2();
+            // let fac = (branches[index].num_of_all_children as f32).log10();
+
+            // Spiralwirbel
+// if i % 2 == 0 {
+//             spiral_transform.translation.x = scale * ( 0.001*i as f32 * (i as f32 * PI/16.).cos()  + scale* 10.*(1.-1.*E.powf(-0.0001*i as f32)) * 1.*(1./64.*i as f32 * PI/116.).cos()); // 27
+//             spiral_transform.translation.y = scale *  branches[index].depth as f32 * 0.1;  //(branches[index].depth as f32 *0.01);// + 0.1 * i as f32) * scale;//param_set.3*scale* 1.;//0.5;//0.2;
+//             spiral_transform.translation.z = scale * ( 0.001*i as f32 * (i as f32 * PI/16.).sin() + scale* 10.*(1.-1.*E.powf(-0.0001*i as f32)) * 1.*(1./64.*i as f32 * PI/17.).sin()); // 99 216
+// }
+// else {
+//             spiral_transform.translation.x = scale * 0.3;
+//             spiral_transform.translation.y = scale * branches[index].depth as f32 * 0.3;
+//             spiral_transform.translation.z = scale * 0.;
+// }
 
 
-            // todo find all the things!
-            spiral_transform.translation.x =scale* ( 0.001*i as f32 * (i as f32 * PI/16.).cos()  + scale* 10.*(1.-1.*E.powf(-0.0001*i as f32)) * 1.*(1./64.*i as f32 * PI/27.).cos());
-            spiral_transform.translation.y =0.01 + branches[index].depth as f32 * 0.1 * scale;  //(branches[index].depth as f32 *0.01);// + 0.1 * i as f32) * scale;//param_set.3*scale* 1.;//0.5;//0.2;
-            spiral_transform.translation.z =scale* ( 0.001*i as f32 * (i as f32 * PI/16.).sin() + scale* 10.*(1.-1.*E.powf(-0.0001*i as f32)) * 1.*(1./64.*i as f32 * PI/99.).sin());
+                if i % 2 == 0 {
+                    spiral_transform.translation.x = scale * (i as f32 * PI/16.).cos();//  + scale* 10.*(1.-1.*E.powf(-0.0001*i as f32)) * 1.*(1./64.*i as f32 * PI/116.).cos()); // 27
+                    spiral_transform.translation.y = scale *  0.;//branches[index].depth as f32;  //(branches[index].depth as f32 *0.01);// + 0.1 * i as f32) * scale;//param_set.3*scale* 1.;//0.5;//0.2;
+                    spiral_transform.translation.z = scale * (i as f32 * PI/16.).sin();// + scale* 10.*(1.-1.*E.powf(-0.0001*i as f32)) * 1.*(1./64.*i as f32 * PI/17.).sin()); // 99 216
+                }
+                else {
+
+                    spiral_transform.translation.x = scale * 0.;
+                    spiral_transform.translation.y = scale * (i as f32 * PI/16.).sin();
+                    spiral_transform.translation.z = scale * 0.;
+                }
+
+
+
+            // if children[inner_child_index] == *children.last().unwrap() {
+            //     spiral_transform.translation.y = scale * 0.3;
+            // }
+
             
             //27 zu 216 hinten modern art
             
@@ -330,11 +341,10 @@ fn param_dive(name:&mut str, index: usize, branches: &mut Vec<Branch>, line_vert
             // Spiraling Up
             spiral_pos = spiral_transform.transform_point(spiral_pos);
             // Rotate into formerly given direction
-            pos = Transform::from_rotation(transform.rotation).transform_point(spiral_pos);
+            pos = Transform::from_rotation(inherited_transform.rotation).transform_point(spiral_pos);
             // Translate to formerly given position
-            pos = Transform::from_translation(transform.translation).transform_point(pos);
-
-
+            pos = Transform::from_translation(inherited_transform.translation).transform_point(pos);
+            
             if i % extending_factor == extending_factor - 1 {
                 if branches.len() > children[inner_child_index] { // To prevent len == index for /
                     let dir = pos - last_pos;
@@ -365,12 +375,9 @@ fn param_dive(name:&mut str, index: usize, branches: &mut Vec<Branch>, line_vert
                 last_pos = pos;
         }
 
-        // param_set.0 -= 0.1;
-        // param_set.2 += 0.1;
-
         for child_index in branches[index].children.clone() {
             if !(branches.len() < child_index) {
-                param_dive(name, child_index, branches, line_vertices, param_set);
+                dive_to_transform(child_index, branches, line_vertices);
             }
         }
     }
@@ -380,10 +387,11 @@ fn get_parent_path(path: &str) -> String{
     let parent_string: String = match path.rsplit_once("/") {
         Some(cut_path) => {
             if cut_path.0.to_string() == "".to_string(){
-                                            "/".to_string()}
-                                            else{
-                                            cut_path.0.to_string()}
-                                            }
+                "/".to_string()
+            }
+            else{
+                cut_path.0.to_string()}
+            }
         None    => "/".to_string(),
     };
     parent_string
