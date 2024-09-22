@@ -1,3 +1,5 @@
+use core::f32;
+
 use bevy::{
     prelude::*,
     input::{keyboard::KeyCode, mouse::MouseMotion},
@@ -90,10 +92,10 @@ pub fn process_inputs_system(
         let mut delta = Vec3::ZERO;
         if keys.pressed(KeyCode::KeyW) {delta.z -= cam.speed;}
         if keys.pressed(KeyCode::KeyS) {delta.z += cam.speed;}
-        if keys.pressed(KeyCode::KeyA) {delta.x -= cam.speed;}
-        if keys.pressed(KeyCode::KeyD) {delta.x += cam.speed;}
-        if keys.pressed(KeyCode::KeyQ) {delta.y -= cam.speed;}
-        if keys.pressed(KeyCode::KeyE) {delta.y += cam.speed;}
+        if keys.pressed(KeyCode::KeyA) {delta.x -= cam.speed *cam.fov;}
+        if keys.pressed(KeyCode::KeyD) {delta.x += cam.speed *cam.fov;}
+        if keys.pressed(KeyCode::KeyQ) {delta.y -= cam.speed *cam.fov;}
+        if keys.pressed(KeyCode::KeyE) {delta.y += cam.speed *cam.fov;}
         delta};
 
         // Update actual cam transformation
@@ -166,7 +168,7 @@ pub fn process_inputs_system(
     if keys.just_released(KeyCode::Tab) {
             let mut cam_transform = q_cam_transform.single_mut();
         
-            let pos = vec3(0., 5000., 10000.);
+            let pos = vec3(0., 7000., 15000.);
             cam_transform.translation = pos;
     
             // Teleport camera to clicked place
@@ -176,7 +178,7 @@ pub fn process_inputs_system(
     // Enter Tree Generation
     if keys.just_released(KeyCode::Enter){//input_path.is_empty() {
         if *enter_cnt == 1. {
-            spawn_tree("/sys".to_string(), Vec3 { x: 0., y: 0., z: 0. }, (1.,0.9,0.5,1.1), &mut commands, &mut meshes,&mut materials);
+            spawn_tree("/sys".to_string(), Vec3 { x: 0., y: 0., z: 0. },  &mut commands, &mut meshes,&mut materials);
             *enter_cnt = 1.;
         }
         else if *enter_cnt == 0. {
@@ -187,8 +189,8 @@ pub fn process_inputs_system(
             *enter_cnt += 1.;
             info!("Path: {:?}", input_path.clone());
                 for i in -15..15 {
-                    spawn_tree(input_path.clone().to_string(), Vec3 { x: 10000. * *enter_cnt, y: 0., z:  50000. * i as f32 }, 
-                    (1.,0.9,*enter_cnt,i as f32 * 0.5), &mut commands, &mut meshes,&mut materials);
+                    spawn_tree(input_path.clone().to_string(), Vec3 { x: 10000. * *enter_cnt, y: 0., z:  50000. * i as f32 }
+                    , &mut commands, &mut meshes,&mut materials);
                 }
         }
     }
@@ -196,8 +198,12 @@ pub fn process_inputs_system(
     if keys.just_released(KeyCode::Backspace){
         
         let center = calc_variance(&tree_data.as_ref().unwrap().bounds);
-        let scale = 1.;
-        info!("Fractal Boxcout: {:?} Scale: {:?}",calc_fractal_dimension(&tree_data.as_ref().unwrap().bounds, scale), scale);
+        let scale = 0.1;
+        println!("{:?} {:?}",calc_fractal_dimension(&tree_data.as_ref().unwrap().bounds, 1.), 1.);
+        println!("{:?} {:?}",calc_fractal_dimension(&tree_data.as_ref().unwrap().bounds, 2.), 2.);
+        println!("{:?} {:?}",calc_fractal_dimension(&tree_data.as_ref().unwrap().bounds, 3.), 3.);
+        println!("{:?} {:?}",calc_fractal_dimension(&tree_data.as_ref().unwrap().bounds, 4.), 4.);
+        println!("{:?} {:?}",calc_fractal_dimension(&tree_data.as_ref().unwrap().bounds, 5.), 5.);
 
         commands.spawn(PbrBundle {
             mesh: meshes.add(Sphere::new(100.)),
@@ -207,100 +213,97 @@ pub fn process_inputs_system(
         });
     }
 
-
     // Node_Picking
     let window = q_window.single();
     let (camera, camera_transform) = q_camera.single();
     let mut q_screen_text = q_screen_text_transform.iter_mut();//.iter_mut();
 
     if buttons.just_released(MouseButton::Left) {
-        // let window = q_window.single();
-        // let (camera, camera_transform) = q_camera.single();
-        
-         //   for (transform, marker) in &mut tree {
+        if let Some(cam_ray) = window.cursor_position().and_then(|cursor| camera.viewport_to_world(camera_transform, cursor)){
 
-                if let Some(cam_ray) = window.cursor_position().and_then(|cursor| camera.viewport_to_world(camera_transform, cursor)){
+            if let Some(tree_data) = &mut tree_data {
 
-                    if let Some(tree_data) = &mut tree_data {
+                let ray_cast = RayCast3d::from_ray(cam_ray, f32::MAX);
 
-                        let ray_cast = RayCast3d::from_ray(cam_ray, 1000000.);
+                for (i, branch, ) in tree_data.bounds.clone().into_iter().enumerate(){
+                    let cast_result = ray_cast.intersects(&branch);//BoundingSphereCast::from_ray(branch, world_position, 10000.);
+                    if cast_result == true {
+                        
+                        // if let Some((mut text,mut text_transform)) = q_screen_text.next(){
+                        //         text_transform.translation.x = 0.;
+                        //         text_transform.translation.y = 0.;
+                        //         text.sections[0].value = tree_data.branches[i].name.clone();
+                        // }
 
-                        for (i, branch, ) in tree_data.bounds.clone().into_iter().enumerate(){
-                            let cast_result = ray_cast.intersects(&branch);//BoundingSphereCast::from_ray(branch, world_position, 10000.);
-                            if cast_result == true {
-                                
-                                // if let Some((mut text,mut text_transform)) = q_screen_text.next(){
-                                //         text_transform.translation.x = 0.;
-                                //         text_transform.translation.y = 0.;
-                                //         text.sections[0].value = tree_data.branches[i].name.clone();
-                                // }
+                        //Terminalmagic
 
-                                //Terminalmagic
+                        // Cat Example
+                        // let output = Command::new("/bin/cat")
+                        //                     .arg("file.txt")
+                        //                     .output()
+                        //                     .expect("failed to execute process");
+                        // println!("status: {}", output.status);
+                        // println!("stdout: {}", String::from_utf8_lossy(&output.stdout));
+                        // println!("stderr: {}", String::from_utf8_lossy(&output.stderr));
+                        // assert!(output.status.success());
 
-                                // Cat Example
-                                // let output = Command::new("/bin/cat")
-                                //                     .arg("file.txt")
-                                //                     .output()
-                                //                     .expect("failed to execute process");
-                                // println!("status: {}", output.status);
-                                // println!("stdout: {}", String::from_utf8_lossy(&output.stdout));
-                                // println!("stderr: {}", String::from_utf8_lossy(&output.stderr));
-                                // assert!(output.status.success());
-
-                                // Create Folder with a click
-                                // let output = Command::new("mkdir")
-                                // .arg(tree_data.branches[i].name.clone().to_string() + "/OoOoO")
-                                // .spawn()
-                                // .expect("Mkdir command failed to start");
+                        // Create Folder with a click
+                        // let output = Command::new("mkdir")
+                        // .arg(tree_data.branches[i].name.clone().to_string() + "/OoOoO")
+                        // .spawn()
+                        // .expect("Mkdir command failed to start");
 
 
-                                // Ls
-                                // let mut output = Default::default();
-                                // let ls = Command::new("ls")
-                                // .arg(tree_data.branches[i].name.clone().to_string())
-                                // .spawn()
-                                // .expect("ls command failed to start")
-                                // .stdout.take().unwrap().read_to_string(&mut output);
+                        // Ls
+                        // let mut output = Default::default();
+                        // let ls = Command::new("ls")
+                        // .arg(tree_data.branches[i].name.clone().to_string())
+                        // .spawn()
+                        // .expect("ls command failed to start")
+                        // .stdout.take().unwrap().read_to_string(&mut output);
 
-                                // List files with click // Needs own word list or 3d spawn in world, right now only blinking shortly but it works
-                                
-                                info!("TreeBranchName: {:?}",tree_data.branches[i].name);
+                        // List files with click // Needs own word list or 3d spawn in world, right now only blinking shortly but it works
+                        
+                        // info!("TreeBranchName: {:?}",tree_data.branches[i].name);
+                        let path_name = tree_data.branches[i].name.clone();
+                        *input_path = path_name.clone();
 
-                                *input_path = tree_data.branches[i].name.clone();
-
-                                let mut cnt = 0.;
-                                for entry in WalkDir::new(tree_data.branches[i].name.clone().to_string()).max_depth(1).into_iter().filter_map(|e| e.ok()) {
-                                    println!(": {:?} :", entry.path());
-                                    if entry.file_type().is_file() || entry.file_type().is_symlink() {
-                                        if let Some((mut text,mut text_transform)) = q_screen_text.next(){
-                                            text_transform.translation.x = -window.width()*0.5 + 50.;
-                                            text_transform.translation.y = window.height()*0.5  - 50. - 10.* cnt;
-                                            if (cnt == 0.){
-                                                text.sections[0].value = entry.path().to_str().unwrap().to_string();
-                                                cnt += 4.;
-                                            }
-                                            else {
-                                                text.sections[0].value = entry.file_name().to_str().unwrap().to_string();
-                                                cnt += 2.;
-                                            }
-                                        }
+                        let mut cnt_x = 50.;
+                        let mut cnt_y = 50.;
+                        for entry in WalkDir::new(tree_data.branches[i].name.clone().to_string()).max_depth(1).into_iter().filter_map(|e| e.ok()) {
+                            // Lists all files and symlinks in an encountered node in the top left corner as 2D text
+                            println!(": {:?} :", entry.path());
+                            if entry.file_type().is_file() || entry.file_type().is_symlink() {
+                                if let Some((mut text,mut text_transform)) = q_screen_text.next(){ 
+                                    text_transform.translation.x = -window.width()*0.5 + cnt_x;
+                                    text_transform.translation.y = window.height()*0.5 - cnt_y;
+                                    if (cnt_y == 50.){
+                                        text.sections[0].value = path_name.clone();//stripped_path;//entry.path().to_str().unwrap().rsplit_once("/").unwrap();//.to_string(); // Display path on top
+                                        cnt_y += 40.;
                                     }
                                     else {
-                                        info!("No files here. Path: {:?}", entry.path());
+                                        text.sections[0].value = entry.file_name().to_str().unwrap().to_string();
+                                        cnt_y += 20.;
+
+                                        if cnt_y > 400. {
+                                            cnt_x += 50.;
+                                            cnt_y = 90.;
+                                        }
                                     }
                                 }
-                                
-                                // Click on node to translate all points around the center point by substracting clicked point from every point?
-                                // To then be able to scale from it 
-
+                            }
+                            else {
+                                info!("No files here. Path: {:?}", entry.path());
                             }
                         }
-                        println!("LeftMouseButton release bounds loop finished: Iterating files \n");
-                        // https://bevy-cheatbook.github.io/programming/commands.html for despawning and spawning file representatives
-
+                        // Click on node to translate all points around the center point by substracting clicked point from every point?
+                        // To then be able to scale from it 
                     }
                 }
-           // }
+                println!("LeftMouseButton release bounds loop finished: Iterating files \n");
+                // https://bevy-cheatbook.github.io/programming/commands.html for despawning and spawning file representatives
+            }
+        }
     }
 
     // Cam teleport to right click
@@ -310,7 +313,7 @@ pub fn process_inputs_system(
 
             if let Some(tree_data) = &mut tree_data {
 
-                let ray_cast = RayCast3d::from_ray(cam_ray, 4000.);
+                let ray_cast = RayCast3d::from_ray(cam_ray, f32::MAX);
 
                 for (_i, branch, ) in tree_data.bounds.clone().into_iter().enumerate(){
                     let cast_result = ray_cast.intersects(&branch);//BoundingSphereCast::from_ray(branch, world_position, 10000.);
@@ -331,46 +334,36 @@ pub fn process_inputs_system(
 
     // Update Node texts
     // #TODO:
-    // Updates node information in cameraview // Depending on Bounding sphere, needs second check if bounding finds are really in view
+    // Updates node information in cameraview // Depending on Bounding sphere
+   // Places the bounding sphere a bit in front of the camera, bounding box at viewplane may be more usefull // Should be adjustable from some panel
+    // let bound_sphere = BoundingSphere::new(camera_transform.forward().mul_add(Vec3 { x: 0., y: 0., z: 6000. }, camera_transform.translation()), 10000.0);
+    
     if let Some(tree_data) = &mut tree_data {
-        // Places the bounding sphere a bit in front of the camera, bounding box at viewplane may be more usefull
-        // let bound_sphere = BoundingSphere::new(camera_transform.forward().mul_add(Vec3 { x: 0., y: 0., z: 6000. }, camera_transform.translation()), 10000.0);
-        let bound_sphere = BoundingSphere::new(
-            camera_transform.transform_point(
-                camera_transform.to_scale_rotation_translation().1
-                .mul_vec3(Vec3 { x: 1., y: 1., z: 1. })), 10000.0);
+             let bound_sphere = BoundingSphere::new(
+                camera_transform.transform_point(camera_transform.to_scale_rotation_translation().1
+                .mul_vec3(Vec3 { x: 1., y:1., z: 1. })), 5000. ); 
         
-                                // Name, Distance, Screenpos
+        // Name, Distance, Screenposition
         let mut detected_nodes: Vec<(String, i32, Vec3)> = vec![];
 
-        // let mut q_screen_text = q_screen_text_transform.iter_mut();
         for (i, branch, ) in tree_data.bounds.clone().into_iter().enumerate(){
-            let cast_result = bound_sphere.intersects(&branch);//BoundingSphereCast::from_ray(branch, world_position, 10000.);
+            let cast_result = bound_sphere.intersects(&branch);
             if cast_result == true {
-
                 if let Some(screen_position) = camera.world_to_ndc(camera_transform, tree_data.bounds[i].center){
-                    
+
                     let distance_vec = tree_data.bounds[i].center - camera_transform.translation();
-
-                    // Dot Product calculates the cos(angle) between to vecs
-                    // -1 : Pointing in opposite directions
-                    //  0 : Perpendicular
-                    //  1 : Exactly same direction
-
                     let dot_product = distance_vec.normalize().dot(camera_transform.forward());
 
-                    // info!("CameraForward: {:?} \nDotProdukt: {:?}", camera_transform.forward(), dot_product);
                     if dot_product > 0. {
-                        // info!("Dot > 0!");
-
                         let distance = camera_transform.translation().distance(tree_data.bounds[i].center);
                         let distance_int = distance as i32;
-
-                        // info!("Distance: {:?} {:?}", distance, distance_int);
-
+                        // Dot Product calculates the cos(angle) between to vecs
+                        // -1 : Pointing in opposite directions
+                        //  0 : Perpendicular
+                        //  1 : Exactly same direction
                         let mut final_screen_pos: Vec3 = Vec3::default();
-                        final_screen_pos.x = screen_position.x * window.width() *0.5;// - window.width()/2.;
-                        final_screen_pos.y = screen_position.y * window.height()*0.5;// - window.height()/2.;
+                        final_screen_pos.x = screen_position.x * window.width() *0.5;
+                        final_screen_pos.y = screen_position.y * window.height()*0.5;
                         final_screen_pos.z = screen_position.z;
 
                         detected_nodes.push( ( // Last path folder name
@@ -381,6 +374,11 @@ pub fn process_inputs_system(
                         )
                     }
                 }
+
+
+
+
+
 
                 // println!("#{} CastResult: {:?} Path: {:?} \n BranchInfo: {:?} \n", i, cast_result, tree_data.branches[i].name, tree_data.branches[i]);
 
@@ -445,12 +443,12 @@ pub fn process_inputs_system(
         }
 
 
-        // while let Some((_text,mut text_transform)) = q_screen_text.next(){
-        //     // info!("Screen while!");
-        //     // Just Pushing them out of view
-        //     text_transform.translation.x = -window.width();
-        //     text_transform.translation.y = window.height();
-        // }               
+        while let Some((_text,mut text_transform)) = q_screen_text.next(){
+            // info!("Screen while!");
+            // Just Pushing them out of view
+            text_transform.translation.x = -window.width();
+            text_transform.translation.y = window.height();
+        }               
     }
 }
 
@@ -459,7 +457,6 @@ pub fn process_inputs_system(
 pub fn spawn_tree (
     path: String,
     pos: Vec3,
-    param_set: (f32,f32,f32,f32),
     commands: &mut Commands,
     meshes: &mut ResMut<Assets<Mesh>>,
     materials: &mut ResMut<Assets<StandardMaterial>>,
@@ -477,7 +474,7 @@ pub fn spawn_tree (
         mesh: meshes.add(main_tree.construct(path.clone())//grow(&mut tree_name, param_set)
     ),
         material: materials.add(
-            Color::rgb_linear(10., 0., 0.)//rgb(1., 1., 1.),
+            Color::rgba_linear(55., 12., 0.0, 0.9)//rgb(1., 1., 1.),
         ),
         transform: Transform::from_translation(pos),
         ..Default::default()
@@ -492,13 +489,7 @@ pub fn spawn_tree (
         mesh: meshes.add(main_tree.mesh_nodes()
     ),
         material: materials.add(
-            // Color::rgba(0.74, 0.3, 0.1, 1.0),
-            // Color::rgb_linear(10., 3.5, 0.5)//rgb(1., 1., 1.),
-            // Color::RgbaLinear { red: 80., green: 40., blue: 38., alpha: 0.79 }
-            Color::Rgba { red: 0.3, green: 0.2, blue: 0.3, alpha: 0.79 }
-
-            // Color::rgba(0.74, 0.3, 0.1, 1.0),
-            // Color::rgba(0., 0., 0., 1.0),
+            Color::rgba_linear(1., 17., 1., 0.5)//rgb(1., 1., 1.),
         ),
         transform: Transform::from_translation(pos),
         ..Default::default()
