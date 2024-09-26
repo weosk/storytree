@@ -34,15 +34,13 @@ fn setup(
     // For Spawning trees in Setup
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<StandardMaterial>>,
-
-    time: Res<Time>,
     mut diags_state: ResMut<FpsCounter>
 ) {
     diags_state.enable();
     // Spwan MemoryTree
     let now = Instant::now();
-    // interactionframework::spawn_tree(    "./TestTree/Tree".to_owned(), Vec3 { x: 0., y: 0., z: 0. }, (1.,0.9,0.5,1.1), &mut commands, &mut meshes,&mut materials);
-    interactionframework::spawn_tree("/".to_string(), Vec3 { x: 0., y: 0., z: 0. }, &mut commands, &mut meshes,&mut materials);
+    interactionframework::spawn_tree(    "./TestTree/Treeroot".to_owned(), Vec3 { x: 0., y: 0., z: 0. }, &mut commands, &mut meshes,&mut materials);
+    // interactionframework::spawn_tree("/".to_string(), Vec3 { x: 0., y: 0., z: 0. }, &mut commands, &mut meshes,&mut materials);
     let elapsed = now.elapsed();
     println!("Elapsed: {:?}",elapsed);
 

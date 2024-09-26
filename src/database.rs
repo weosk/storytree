@@ -198,9 +198,13 @@ impl Tree {
                                         &mut node_indices, 
                                         &branch.transform.compute_matrix(), cnt as f32);
 
-            // println!("Branchesscale: {:?}",branch.transform.scale.y);
             // Populate bounds
-            self.bounds[cnt].sphere = primitives::Sphere{ radius: branch.transform.scale.y * 7.};
+            if branch.transform.scale.y > 1. {
+                self.bounds[cnt].sphere = primitives::Sphere{ radius: branch.transform.scale.y * branch.transform.scale.y  };
+            }
+            else{
+                self.bounds[cnt].sphere = primitives::Sphere{ radius: branch.transform.scale.y * 7.  };
+            }
             self.bounds[cnt].center = branch.transform.translation;
         }
 
@@ -281,8 +285,9 @@ fn dive_to_transform(index: usize, branches: &mut Vec<Branch>, line_vertices: &m
 
     // Scales down the size to reduce visual clutter
     // Influences distance between vertices and size of the node representatives
-    let scale = 4. * 0.7f32.powf(branches[index].depth as f32);
-
+    // let scale = 4. * 0.7f32.powf(branches[index].depth as f32);
+    let scale = 2. * 0.8f32.powf(branches[index].depth as f32);
+    // let scale = 1.;
     // The extending factor determins how many iterations are run before assigning 
     // the next transform to the next descendant
     let extending_factor = 20;
@@ -290,10 +295,16 @@ fn dive_to_transform(index: usize, branches: &mut Vec<Branch>, line_vertices: &m
     let lines_to_last_node = branches[index].children.len() as i32 * extending_factor;
 
     for i in 0..lines_to_last_node { // Number of lines per branch
-        
+    
         // spiral_transform.translation.x = scale * ( 0.001*i as f32 * (i as f32 * PI/16.).cos()  + scale* 10.*(1.-1.*E.powf(-0.0001*i as f32)) * 1.*(1./64.*i as f32 * PI/116.).cos()); // 27
-        // spiral_transform.translation.y = scale *  branches[index].depth as f32 * 0.1;  //(branches[index].depth as f32 *0.01);// + 0.1 * i as f32) * scale;//param_set.3*scale* 1.;//0.5;//0.2;
+        // spiral_transform.translation.y = scale *  1.;//branches[index].depth as f32 * 0.3;  //(branches[index].depth as f32 *0.01);// + 0.1 * i as f32) * scale;//param_set.3*scale* 1.;//0.5;//0.2;
         // spiral_transform.translation.z = scale * ( 0.001*i as f32 * (i as f32 * PI/16.).sin() + scale* 10.*(1.-1.*E.powf(-0.0001*i as f32)) * 1.*(1./64.*i as f32 * PI/17.).sin()); // 99 216
+
+        // took pictures of this
+        // spiral_transform.translation.x = scale * ( 0.001*i as f32 * (i as f32 * PI/16.).cos()  + scale* 10.*(1.-1.*E.powf(-0.0001*i as f32)) * 1.*(1./64.*i as f32 * PI/27.).cos()); // 27
+        // spiral_transform.translation.y = scale *  1.;//branches[index].depth as f32 * 0.3;  //(branches[index].depth as f32 *0.01);// + 0.1 * i as f32) * scale;//param_set.3*scale* 1.;//0.5;//0.2;
+        // spiral_transform.translation.z = scale * ( 0.001*i as f32 * (i as f32 * PI/16.).sin() + scale* 10.*(1.-1.*E.powf(-0.0001*i as f32)) * 1.*(1./64.*i as f32 * PI/216.).sin()); // 99 216
+
 
         // spiral_transform.translation.x =scale*0.001*i as fs32 * (i as f32 * PI/16.).cos() + scale* 10.*(1.-1.*E.powf(-0.0001*i as f32)) * 1.*(1./64.*i as f32 * PI/16.).cos();
         // spiral_transform.translation.y =scale* 0.5;//0.5;//0.2;
@@ -305,11 +316,38 @@ fn dive_to_transform(index: usize, branches: &mut Vec<Branch>, line_vertices: &m
         // spiral_transform.translation.y = scale * 1.;
         // spiral_transform.translation.z = scale * 0.;
 
-        let fac = PI/16.;
-        spiral_transform.translation.x = scale * (i as f32 * fac).cos();
-        spiral_transform.translation.y = scale * 1.;
-        spiral_transform.translation.z = scale * (i as f32 * fac).sin();
-    
+        let factor = PI/16.;
+        // if index == 0{
+        //     spiral_transform.translation.x = 0.3 * i as f32 * scale * (i as f32 * factor).cos();
+        //     spiral_transform.translation.y =                  scale * 1.;
+        //     spiral_transform.translation.z = 0.3 * i as f32 * scale * (i as f32 * factor).sin();
+        // }
+        // else {                  
+        //     spiral_transform.translation.x =                    scale * (i as f32 * factor).cos() ;
+        //     spiral_transform.translation.y =                    scale * 1.;
+        //     spiral_transform.translation.z =                   0.1 * scale * (i as f32 * factor).sin() - 0.3 * i as f32;
+        // }
+
+        spiral_transform.translation.x =                    scale * (i as f32 * factor).cos();
+        spiral_transform.translation.y =                    scale * 1.;
+        spiral_transform.translation.z =                    scale * (i as f32 * factor).sin();
+
+        // else if branches[index].children.len() < 3{
+        //     spiral_transform.translation.x = scale * (i as f32 * factor).cos();
+        //     spiral_transform.translation.y = scale * 1.;
+        //     spiral_transform.translation.z = scale * (i as f32 * factor).sin();
+        // }
+
+
+        // else if i % 2 == 0{
+        //     spiral_transform.translation.x = scale * (i as f32 * factor).cos();
+        //     spiral_transform.translation.y = scale * 1.;
+        //     spiral_transform.translation.z = scale * (i as f32 * factor).sin();
+        // }
+        // spiral_transform.translation.x = 0.1 * scale * (i as f32 * factor).cos();
+        // spiral_transform.translation.y =       scale * 1.;
+        // spiral_transform.translation.z = 0.1 * scale * (i as f32 * factor).sin();
+
         // Spiraling Up, step by step
         spiral_pos = spiral_transform.transform_point(spiral_pos);
         // Rotate into formerly given direction
@@ -325,7 +363,7 @@ fn dive_to_transform(index: usize, branches: &mut Vec<Branch>, line_vertices: &m
             rts.look_to(dir.normalize(), Vec3 {x: 0., y: 1., z: 0. } );
             rts = rts.with_translation(pos); // Located at the current position
             // rts = rts.with_scale(Vec3::splat(scale*2.4));
-            rts = rts.with_scale(Vec3::splat(scale));//*2.4));
+            rts = rts.with_scale(Vec3::splat(scale*1.0));//*2.4));
 
             // Assigned to the next sub branch
             branches[children[inner_child_index]].transform = rts;
