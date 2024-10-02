@@ -39,7 +39,7 @@ fn setup(
     diags_state.enable();
     // Spwan MemoryTree
     let now = Instant::now();
-    interactionframework::spawn_tree(    "./TestTree/Treeroot".to_owned(), Vec3 { x: 0., y: 0., z: 0. }, &mut commands, &mut meshes,&mut materials);
+    interactionframework::spawn_tree(    "/".to_owned(), Vec3 { x: 0., y: 0., z: 0. }, &mut commands, &mut meshes,&mut materials);
     // interactionframework::spawn_tree("/".to_string(), Vec3 { x: 0., y: 0., z: 0. }, &mut commands, &mut meshes,&mut materials);
     let elapsed = now.elapsed();
     println!("Elapsed: {:?}",elapsed);

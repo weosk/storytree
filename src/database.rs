@@ -286,27 +286,182 @@ fn dive_to_transform(index: usize, branches: &mut Vec<Branch>, line_vertices: &m
     // Scales down the size to reduce visual clutter
     // Influences distance between vertices and size of the node representatives
     // let scale = 4. * 0.7f32.powf(branches[index].depth as f32);
-    let scale = 2. * 0.8f32.powf(branches[index].depth as f32);
-    // let scale = 1.;
     // The extending factor determins how many iterations are run before assigning 
     // the next transform to the next descendant
     let extending_factor = 20;
     // Multiplied by the number of descendants this flows into the number iterations and lines
     let lines_to_last_node = branches[index].children.len() as i32 * extending_factor;
 
+    // Exhibit A
+    let mut scale = 2. * 0.8f32.powf(branches[index].depth as f32);
+
+    // Exhibit B
+    // let mut scale = 2. * 0.8f32.powf(branches[index].depth as f32);
+
+    let mut edge_flag = true;
     for i in 0..lines_to_last_node { // Number of lines per branch
-    
+
+        // // Exhibit A
+        // let factor = PI/16.;
+        // spiral_transform.translation.x =                    scale * (i as f32 * factor).cos();
+        // spiral_transform.translation.y =                    scale * 1.;
+        // spiral_transform.translation.z =                    scale * (i as f32 * factor).sin();
+
+        // //Exhibit B
+        spiral_transform.translation.x = scale * ( 0.001*i as f32 * (i as f32 * PI/16.).sin() + scale* 10.*(1.-1.*E.powf(-0.0001*i as f32)) * 1.*(1./64.*i as f32 * PI/27.).cos()); // 27
+        spiral_transform.translation.y = scale *  1.;//branches[index].depth as f32 * 0.3;  //(branches[index].depth as f32 *0.01);// + 0.1 * i as f32) * scale;//param_set.3*scale* 1.;//0.5;//0.2;
+        spiral_transform.translation.z = scale * ( 0.001*i as f32 * (i as f32 * PI/16.).cos() + scale* 10.*(1.-1.*E.powf(-0.0001*i as f32)) * 1.*(1./64.*i as f32 * PI/216.).sin()); // 99 216
+
+        // Exhibit C
+        // spiral_transform.translation.x =  scale * ( 0.001*i as f32 * (i as f32 * PI/16.).sin() +scale* 10.*(1.-1.*E.powf(-0.0001*i as f32)) * 1.*(1./64.*i as f32 * PI/27.).cos()); // 27
+        // spiral_transform.translation.y =  scale *  1.;//branches[index].depth as f32 * 0.3;  //(branches[index].depth as f32 *0.01);// + 0.1 * i as f32) * scale;//param_set.3*scale* 1.;//0.5;//0.2;
+        // spiral_transform.translation.z =  scale * ( 0.001*i as f32 * (i as f32 * PI/16.).cos() + scale* 10.*(1.-1.*E.powf(-0.0001*i as f32)) * 1.*(1./64.*i as f32 * PI/216.).sin()); // 99 216
+        
+        // spiral_transform.translation.x = scale * ( 0.001*i as f32 * (i as f32 * PI/16.).sin() + scale* 10.*(1.-1.*E.powf(-0.0001*i as f32)) * 1.*(1./64.*i as f32 * PI/27.).cos()); // 27
+        // spiral_transform.translation.y = scale *  1.;//branches[index].depth as f32 * 0.3;  //(branches[index].depth as f32 *0.01);// + 0.1 * i as f32) * scale;//param_set.3*scale* 1.;//0.5;//0.2;
+        // spiral_transform.translation.z = scale * ( 0.001*i as f32 * (i as f32 * PI/16.).cos() + scale* 10.*(1.-1.*E.powf(-0.0001*i as f32)) * 1.*(1./64.*i as f32 * PI/216.).sin()); // 99 216
+
+        // if branches[index].num_of_all_children > 1000 {
+        //     spiral_transform.translation *= 10.;
+        // }
+
+        // let mut factor = PI/16.;
+        // if branches[index].depth < 1 {
+        //     spiral_transform.translation.x =(3-branches[index].depth) as f32 * scale * (i as f32 * PI/16.).cos() * 0.5  * i as f32;
+        //     spiral_transform.translation.y =(3-branches[index].depth) as f32 * scale;
+        //     spiral_transform.translation.z =(3-branches[index].depth) as f32 * scale * (i as f32 * PI/16.).sin() * 0.5  * i as f32;       
+        // }
+        // else if branches[index].depth < 9 && branches[index].depth %2 == 0 {
+        //     spiral_transform.translation.x = branches[branches[index].parent].transform.translation.x *0.001;
+        //     spiral_transform.translation.y = scale *   branches[branches[index].parent].transform.translation.y *0.0001;
+        //     spiral_transform.translation.z = branches[branches[index].parent].transform.translation.z *0.001;
+        // }
+        // else if branches[index].depth < 9 && branches[index].depth %2 == 1 {
+        //     spiral_transform.translation.x = branches[branches[index].parent].transform.translation.x *0.001;
+        //     spiral_transform.translation.y = 0.;
+        //     spiral_transform.translation.z = branches[branches[index].parent].transform.translation.z *0.001;
+        // }
+        //     factor = PI/64.;
+        //     spiral_transform.translation.x = 0.1 * scale * (i as f32 * PI/16.).cos() * 0.5  * i as f32;                   
+        //     spiral_transform.translation.y =       scale;            
+        //     spiral_transform.translation.z = 0.1 * scale * (i as f32 * PI/16.).sin() * 0.5  * i as f32; 
+        // spiral_transform.translation.x = scale *   branches[branches[index].parent].transform.translation.x *0.0001;
+        // spiral_transform.translation.y = scale *   branches[branches[index].parent].transform.translation.y *0.0001;
+        // spiral_transform.translation.z = scale *   branches[branches[index].parent].transform.translation.z *0.0001;
+        // }
+        // else if branches[index].num_of_children > 64{
+        //     factor = PI/64.;
+        //     spiral_transform.translation.x =                    scale * (i as f32 * factor).cos();
+        //     spiral_transform.translation.y =                    scale * 0.2;
+        //     spiral_transform.translation.z =                    scale * (i as f32 * factor).sin();
+        // }
+        // else {
+        //     spiral_transform.translation.x =                 2.*scale * (i as f32 * factor).cos() ;//+ branches[branches[index].parent].transform.translation.x *0.001;
+        //     spiral_transform.translation.y =                    scale * 2.;
+        //     spiral_transform.translation.z =                 2.*scale * (i as f32 * factor).sin();// + branches[branches[index].parent].transform.translation.z *0.001;
+        // }
+        // else if branches[index].num_of_children > 10 {
+        //     spiral_transform.translation.x = scale* 1.*(1.-1.*E.powf(-0.001*i as f32)) * 1.*(1./20.* i as f32 * PI/20.).cos() + 0.001*branches[branches[index].parent].transform.translation.x;
+        //     spiral_transform.translation.y = scale * 4.;
+        //     spiral_transform.translation.z = scale* 1.*(1.-1.*E.powf(-0.001*i as f32)) * 1.*(1./20.* i as f32 * PI/20.).sin() + 0.001*branches[branches[index].parent].transform.translation.z;
+        // }
+        // else {
+        //     // spiral_transform.translation.x = scale* 1.*(1.-1.*E.powf(-0.001*i as f32)) * 1.*(1./20.* i as f32 * PI/20.).cos();
+        //     // spiral_transform.translation.y = scale;
+        //     // spiral_transform.translation.z = scale* 1.*(1.-1.*E.powf(-0.001*i as f32)) * 1.*(1./20.* i as f32 * PI/20.).sin() + 0.1* i as f32;
+        //         spiral_transform.translation.x = -scale * 4.;
+        //         spiral_transform.translation.y = scale;
+        //         spiral_transform.translation.z = scale* 1.*(1.-1.*E.powf(-0.001*i as f32)) * 1.*(1./20.* i as f32 * PI/20.).cos() + 0.01 * i as f32;
+        // }
+
+        
+        
+        
+        //i > lines_to_last_node - extending_factor{
+        //     spiral_transform.translation.x = -scale * 2.;
+        //     spiral_transform.translation.y = scale;
+        //     spiral_transform.translation.z = scale* 1.*(1.-1.*E.powf(-0.001*i as f32)) * 1.*(1./20.* i as f32 * PI/20.).cos();
+        // }
+        // else {
+        //     spiral_transform.translation.x =  scale* 1.*(1.-1.*E.powf(-0.001*i as f32)) * 1.*(1./20.* i as f32 * PI/20.).cos();//-scale * 2.;
+        //     spiral_transform.translation.y = 0.1*scale;
+        //     spiral_transform.translation.z = scale* 1.*(1.-1.*E.powf(-0.001*i as f32)) * 1.*(1./20.* i as f32 * PI/20.).cos();
+
+        // }
+
+        // if branches[index].depth == 2 && i > lines_to_last_node - extending_factor {
+        //     spiral_transform.translation.x = scale * (i as f32 * PI/16.).cos() * 1. * 0.1 * i as f32;
+        //     spiral_transform.translation.y = scale *  0.5;
+        //     spiral_transform.translation.z = scale * (i as f32 * PI/16.).sin() * 1. * 0.1 * i as f32;
+        // }
+        // // else
+        // if branches[index].depth == 0 {
+        //     spiral_transform.translation.x = scale* 20.*(1.-1.*E.powf(-0.001*i as f32)) * 1.*(1./20.* i as f32 * PI/20.).cos();
+        //     spiral_transform.translation.y = scale *2.;
+        //     spiral_transform.translation.z = scale *2.;//* 20.*(1.-1.*E.powf(-0.001*i as f32)) * 1.*(1./20.*i as f32 * PI/20.).cos(); 
+        // }
+        // else if branches[index].depth < 5 {
+        //     spiral_transform.translation.x = scale * ( 0.001*i as f32 * (i as f32 * PI/16.).sin() + scale* 10.*(1.-1.*E.powf(-0.0001*i as f32)) * 1.*(1./64.*i as f32 * PI/64.).cos()); // 27
+        //     spiral_transform.translation.y = scale * 2.;//branches[index].depth as f32 * 0.3;  //(branches[index].depth as f32 *0.01);// + 0.1 * i as f32) * scale;//param_set.3*scale* 1.;//0.5;//0.2;
+        //     spiral_transform.translation.z = scale * ( 0.001*i as f32 * (i as f32 * PI/16.).cos() + scale* 10.*(1.-1.*E.powf(-0.0001*i as f32)) * 1.*(1./64.*i as f32 * PI/64.).sin()); // 99 216            
+        // }
+        // else {
+        //     spiral_transform.translation.x = scale * ( 0.001*i as f32 * (i as f32 * PI/16.).sin() + scale* 10.*(1.-1.*E.powf(-0.0001*i as f32)) * 1.*(1./64.*i as f32 * PI/64.).cos()); // 27
+        //     spiral_transform.translation.y = scale *  1.;//branches[index].depth as f32 * 0.3;  //(branches[index].depth as f32 *0.01);// + 0.1 * i as f32) * scale;//param_set.3*scale* 1.;//0.5;//0.2;
+        //     spiral_transform.translation.z = scale * ( 0.001*i as f32 * (i as f32 * PI/16.).cos() + scale* 10.*(1.-1.*E.powf(-0.0001*i as f32)) * 1.*(1./64.*i as f32 * PI/64.).sin()); // 99 216
+        // }
+    //   let factor = PI/16.;
+    //     spiral_transform.translation.x =                    scale * (i as f32 * factor).cos().exp2();
+    //     spiral_transform.translation.y =                    scale * 1.;
+    //     spiral_transform.translation.z =                    scale * (i as f32 * factor).sin().exp2();
+
+        // let factor = PI/16.;
+
+        // if index == 0 || i > lines_to_last_node - extending_factor{//index == 0{
+        //     edge_flag = true;
+        //     spiral_transform.translation.x = scale * (i as f32 * PI/16.).cos() * 1. * 0.5 * i as f32;
+        //     spiral_transform.translation.y = scale *  0.5;
+        //     spiral_transform.translation.z = scale * (i as f32 * PI/16.).sin() * 1. * 0.5 * i as f32;
+        // }
+        // else {
+        //     edge_flag = false;
+        //     spiral_transform.translation.x = scale * ( 0.001*i as f32 * (i as f32 * PI/16.).sin() + scale* 10.*(1.-1.*E.powf(-0.0001*i as f32)) * 1.*(1./64.*i as f32 * PI/64.).cos()); // 27
+        //     spiral_transform.translation.y = scale *  1.;//branches[index].depth as f32 * 0.3;  //(branches[index].depth as f32 *0.01);// + 0.1 * i as f32) * scale;//param_set.3*scale* 1.;//0.5;//0.2;
+        //     spiral_transform.translation.z = scale * ( 0.001*i as f32 * (i as f32 * PI/16.).cos() + scale* 10.*(1.-1.*E.powf(-0.0001*i as f32)) * 1.*(1./64.*i as f32 * PI/64.).sin()); // 99 216
+        // }
+        // else if branches[index].children.len() < 10 {
+        //     spiral_transform.translation.x = scale * ( 0.001*i as f32 * (i as f32 * PI/16.).sin()  + scale* 10.*(1.-1.*E.powf(-0.0001*i as f32)) * 1.*(1./64.*i as f32 * PI/64.).cos()); // 27
+        //     spiral_transform.translation.y = scale *  1.;//branches[index].depth as f32 * 0.3;  //(branches[index].depth as f32 *0.01);// + 0.1 * i as f32) * scale;//param_set.3*scale* 1.;//0.5;//0.2;
+        //     spiral_transform.translation.z = scale * ( 0.001*i as f32 * (i as f32 * PI/16.).cos() + scale* 10.*(1.-1.*E.powf(-0.0001*i as f32)) * 1.*(1./64.*i as f32 * PI/64.).sin()); // 99 216 
+        // }
+        // else {
+        //     spiral_transform.translation.x =                    scale * (i as f32 * PI/16.).cos();
+        //     spiral_transform.translation.y =                    scale * 1.;
+        //     spiral_transform.translation.z =                    scale * (i as f32 * PI/16.).sin();
+        // }
+
+
+
+        //Exhibit C
+        // let factor = PI/16.;
+        // if index == 0{
+
         // spiral_transform.translation.x = scale * ( 0.001*i as f32 * (i as f32 * PI/16.).cos()  + scale* 10.*(1.-1.*E.powf(-0.0001*i as f32)) * 1.*(1./64.*i as f32 * PI/116.).cos()); // 27
         // spiral_transform.translation.y = scale *  1.;//branches[index].depth as f32 * 0.3;  //(branches[index].depth as f32 *0.01);// + 0.1 * i as f32) * scale;//param_set.3*scale* 1.;//0.5;//0.2;
         // spiral_transform.translation.z = scale * ( 0.001*i as f32 * (i as f32 * PI/16.).sin() + scale* 10.*(1.-1.*E.powf(-0.0001*i as f32)) * 1.*(1./64.*i as f32 * PI/17.).sin()); // 99 216
 
+        // if index == 0 {
+        //     scale = 10.;
+        // }
+
         // took pictures of this
-        // spiral_transform.translation.x = scale * ( 0.001*i as f32 * (i as f32 * PI/16.).cos()  + scale* 10.*(1.-1.*E.powf(-0.0001*i as f32)) * 1.*(1./64.*i as f32 * PI/27.).cos()); // 27
+        // spiral_transform.translation.x = scale * ( 0.001*i as f32 * (i as f32 * PI/16.).sin()  + scale* 10.*(1.-1.*E.powf(-0.0001*i as f32)) * 1.*(1./64.*i as f32 * PI/64.).cos()); // 27
         // spiral_transform.translation.y = scale *  1.;//branches[index].depth as f32 * 0.3;  //(branches[index].depth as f32 *0.01);// + 0.1 * i as f32) * scale;//param_set.3*scale* 1.;//0.5;//0.2;
-        // spiral_transform.translation.z = scale * ( 0.001*i as f32 * (i as f32 * PI/16.).sin() + scale* 10.*(1.-1.*E.powf(-0.0001*i as f32)) * 1.*(1./64.*i as f32 * PI/216.).sin()); // 99 216
+        // spiral_transform.translation.z = scale * ( 0.001*i as f32 * (i as f32 * PI/16.).cos() + scale* 10.*(1.-1.*E.powf(-0.0001*i as f32)) * 1.*(1./64.*i as f32 * PI/64.).sin()); // 99 216
 
 
-        // spiral_transform.translation.x =scale*0.001*i as fs32 * (i as f32 * PI/16.).cos() + scale* 10.*(1.-1.*E.powf(-0.0001*i as f32)) * 1.*(1./64.*i as f32 * PI/16.).cos();
+
+        // spiral_transform.translation.x =scale*0.001*i as f32 * (i as f32 * PI/16.).cos() + scale* 10.*(1.-1.*E.powf(-0.0001*i as f32)) * 1.*(1./64.*i as f32 * PI/16.).cos();
         // spiral_transform.translation.y =scale* 0.5;//0.5;//0.2;
         // spiral_transform.translation.z =scale*0.001*i as f32 * (i as f32 * PI/16.).sin() + scale* 10.*(1.-1.*E.powf(-0.0001*i as f32)) * 1.*(1./64.*i as f32 * PI/16.).sin();
 
@@ -316,7 +471,7 @@ fn dive_to_transform(index: usize, branches: &mut Vec<Branch>, line_vertices: &m
         // spiral_transform.translation.y = scale * 1.;
         // spiral_transform.translation.z = scale * 0.;
 
-        let factor = PI/16.;
+        // let factor = PI/16.;
         // if index == 0{
         //     spiral_transform.translation.x = 0.3 * i as f32 * scale * (i as f32 * factor).cos();
         //     spiral_transform.translation.y =                  scale * 1.;
@@ -327,10 +482,10 @@ fn dive_to_transform(index: usize, branches: &mut Vec<Branch>, line_vertices: &m
         //     spiral_transform.translation.y =                    scale * 1.;
         //     spiral_transform.translation.z =                   0.1 * scale * (i as f32 * factor).sin() - 0.3 * i as f32;
         // }
-
-        spiral_transform.translation.x =                    scale * (i as f32 * factor).cos();
-        spiral_transform.translation.y =                    scale * 1.;
-        spiral_transform.translation.z =                    scale * (i as f32 * factor).sin();
+        // let factor = PI/16.;
+        // spiral_transform.translation.x =                    scale * (i as f32 * factor).cos();
+        // spiral_transform.translation.y =                    scale * 1.;
+        // spiral_transform.translation.z =                    scale * (i as f32 * factor).sin();
 
         // else if branches[index].children.len() < 3{
         //     spiral_transform.translation.x = scale * (i as f32 * factor).cos();
@@ -360,7 +515,39 @@ fn dive_to_transform(index: usize, branches: &mut Vec<Branch>, line_vertices: &m
             let mut rts: Transform = spiral_transform;
             let dir          = pos - last_pos;
             // Facing the direction of a helix tangent, oriented upwards
-            rts.look_to(dir.normalize(), Vec3 {x: 0., y: 1., z: 0. } );
+            // if edge_flag {
+            //     rts.look_to(dir.normalize(), pos );
+            // }
+            // else {
+                // if branches[index].depth == 2 && i > lines_to_last_node - extending_factor{ //inner_child_index == branches[index].children.len() {
+                //     rts.look_to(Vec3 {x: -1., y: 0., z: 0. }, Vec3 {x: 0., y: 1., z: 0. } );              
+                //             // rts.look_to(Vec3 {x: -1., y: 0., z: 0. }, Vec3 {x: 0., y: 1., z: 0. } );
+                // }
+                // else
+                // if branches[index].depth < 5 {
+                    // rts.look_to(Vec3 {x: 0., y: 1., z: 0. } , dir.normalize());   
+                // if index == 0{
+                //     rts.look_to(dir.normalize(), Vec3 {x: 0., y: 1., z: 0. } ); 
+                // }
+                // else if i > lines_to_last_node - extending_factor {
+                //     rts.look_to(dir.normalize(), Vec3 {x: 0., y: 1., z: 0. } ); 
+                //     // rts.rotation = branches[branches[index].parent].transform.rotation;  
+                //     rts.rotate_local_y(-PI/2.);
+                //     // rts.rotate_y(-PI/2.);   
+                // }
+                // else {
+                //     rts.look_to(dir.normalize(), Vec3 {x: 0., y: 1., z: 0. } );
+                // }
+                // if index == 0 {
+                //     rts.look_to(dir.normalize(), Vec3 {x: 0., y: 1., z: 0. } ); 
+                //     rts.rotate_local_y(-PI/2.);
+                // }
+                // else {
+                //     rts.look_to(pos*2., Vec3 {x: 0., y: 1., z: 0. } ); 
+                // }
+                rts.look_to(dir.normalize(), Vec3 {x: 0., y: 1., z: 0. } ); 
+
+
             rts = rts.with_translation(pos); // Located at the current position
             // rts = rts.with_scale(Vec3::splat(scale*2.4));
             rts = rts.with_scale(Vec3::splat(scale*1.0));//*2.4));
